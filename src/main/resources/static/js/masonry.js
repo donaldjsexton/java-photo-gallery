@@ -44,9 +44,4 @@ document.addEventListener("DOMContentLoaded", function () {
       this.src = "/images/placeholder.jpg";
     });
   });
-
-  // Auto-refresh gallery every 30 seconds (optional)
-  // setInterval(() => {
-  //     location.reload();
-  // }, 30000);
 });
