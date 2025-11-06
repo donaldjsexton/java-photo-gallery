@@ -37,7 +37,7 @@
     <div id="photo-gallery" class="masonry-grid">
         <div th:each="photo : ${photos}" class="masonry-item">
             <div class="card">
-                <img th:src="@{'/uploads/' + ${photo.fileName}}"
+                <img th:src="@{/uploads/{f}(f=${photo.fileName})}"
                      th:alt="${photo.originalName}"
                      class="card-img-top gallery-image"
                      onerror="this.src='/images/placeholder.jpg'">
