@@ -61,6 +61,19 @@ public class PhotoService {
     }
 
     public Photo savePhoto(MultipartFile file) throws IOException {
+        String filename = file.getOriginalFilename();
+        String contentType = file.getContentType();
+        if (
+            filename == null ||
+            !filename.matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$")
+        ) {
+            throw new IOException("Invalid file type");
+        }
+
+        if (!contentType.startsWith("image/")) {
+            throw new IOException("Not an image file");
+        }
+
         String fileName = photoStorageService.storeFile(file);
 
         Photo photo = new Photo(

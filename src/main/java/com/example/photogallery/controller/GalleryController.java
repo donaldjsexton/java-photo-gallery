@@ -4,15 +4,11 @@ package com.example.photogallery.controller;
 import com.example.photogallery.model.Photo;
 import com.example.photogallery.service.PhotoService;
 import com.example.photogallery.service.PhotoStorageService;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -68,24 +64,21 @@ public class GalleryController {
         return "redirect:/";
     }
 
-    @GetMapping("/image/{fileName}")
-    public ResponseEntity<Resource> getImage(@PathVariable String fileName) {
+    @PostMapping("/api/upload")
+    @ResponseBody
+    public Map<String, Object> uploadSingle(
+        @RequestParam("file") MultipartFile file
+    ) {
+        Map<String, Object> result = new HashMap<>();
         try {
-            File file = photoStorageService.getFile(fileName);
-            if (!file.exists()) {
-                return ResponseEntity.notFound().build();
-            }
-            Resource resource = new FileSystemResource(file);
-            return ResponseEntity.ok()
-                .contentType(
-                    MediaType.parseMediaType(
-                        Files.probeContentType(file.toPath())
-                    )
-                )
-                .body(resource);
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
+            Photo photo = photoService.savePhoto(file);
+            result.put("success", true);
+            result.put("id", photo.getId());
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", e.getMessage());
         }
+        return result;
     }
 
     @DeleteMapping("/photo/{id}")
