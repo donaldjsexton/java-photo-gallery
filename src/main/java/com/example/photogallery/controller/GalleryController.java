@@ -81,7 +81,7 @@ public class GalleryController {
         return result;
     }
 
-    @DeleteMapping("/photo/{id}")
+    @DeleteMapping("/photo/{id}/delete")
     public String deletePhoto(
         @PathVariable Long id,
         RedirectAttributes redirectAttributes
@@ -97,6 +97,36 @@ public class GalleryController {
         } else {
             redirectAttributes.addFlashAttribute("message", "Photo not found!");
         }
+        return "redirect:/";
+    }
+
+    @PostMapping("/photo/{id}/update")
+    public String updatePhoto(
+        @PathVariable Long id,
+        @RequestParam("file") MultipartFile file,
+        RedirectAttributes redirectAttributes
+    ) {
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Please select a file"
+            );
+            return "redirect:/";
+        }
+
+        try {
+            photoService.updatePhoto(id, file);
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Photo updated successfully!"
+            );
+        } catch (IOException e) {
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Update failed: " + e.getMessage()
+            );
+        }
+
         return "redirect:/";
     }
 }

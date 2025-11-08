@@ -14,7 +14,7 @@ async function uploadFile(file) {
     const result = await response.json();
 
     if (result.success) {
-      location.reload(); // Refresh gallery
+      location.reload();
     } else {
       alert("Upload failed: " + result.error);
     }

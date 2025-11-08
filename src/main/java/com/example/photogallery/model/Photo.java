@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "photos")
 public class Photo {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -14,16 +15,23 @@ public class Photo {
     private String fileName;
     private String contentType;
     private Long size;
+    private String fileHash;
     private LocalDateTime uploadDate;
 
-    public Photo() {
-    }
+    public Photo() {}
 
-    public Photo(String originalName, String fileName, String contentType, Long size) {
+    public Photo(
+        String originalName,
+        String fileName,
+        String contentType,
+        Long size,
+        String fileHash
+    ) {
         this.originalName = originalName;
         this.fileName = fileName;
         this.contentType = contentType;
         this.size = size;
+        this.fileHash = fileHash;
         this.uploadDate = LocalDateTime.now();
     }
 
@@ -65,6 +73,14 @@ public class Photo {
 
     public void setSize(Long size) {
         this.size = size;
+    }
+
+    public String getFileHash() {
+        return fileHash;
+    }
+
+    public void setFileHash(String fileHash) {
+        this.fileHash = fileHash;
     }
 
     public LocalDateTime getUploadDate() {
