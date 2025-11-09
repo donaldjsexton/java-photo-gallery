@@ -43,7 +43,43 @@
                             Upload
                         </button>
                     </form>
+                    <form action="/" method="get">
+                        <!-- Preserve the current sort when searching -->
+                        <input
+                            type="hidden"
+                            name="sort"
+                            th:value="${currentSort}"
+                        />
 
+                        <div class="input-group">
+                            <input
+                                type="text"
+                                class="form-control"
+                                name="search"
+                                placeholder="Search photos..."
+                                th:value="${searchQuery}"
+                            />
+                            <button class="btn btn-primary" type="submit">
+                                Search
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Add a clear search button if there's an active search -->
+                    <div th:if="${isSearchResult}" class="mt-2">
+                        <a
+                            th:href="@{/(sort=${currentSort})}"
+                            class="btn btn-secondary btn-sm"
+                        >
+                            Clear Search
+                        </a>
+                        <small class="text-muted ms-2">
+                            Search results for: "<span
+                                th:text="${searchQuery}"
+                            ></span
+                            >"
+                        </small>
+                    </div>
                     <!-- Success/Error Messages -->
                     <div th:if="${message}" class="alert alert-info mt-3">
                         <span th:text="${message}"></span>

@@ -13,7 +13,6 @@ import com.example.photogallery.model.Photo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,10 +66,13 @@ public class ExifService {
                 ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL
             );
             if (date != null) {
-                SimpleDateFormat formatter = new SimpleDateFormat(
-                    "yyyy-MM-dd HH:mm:ss"
+                photo.setDateTaken(
+                    date
+                        .toInstant()
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDateTime()
                 );
-                photo.setDateTaken(formatter.format(date));
+                photo.setDateTakenParsed(date);
             }
         }
     }

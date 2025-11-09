@@ -2,6 +2,7 @@
 package com.example.photogallery.controller;
 
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.service.PhotoSearchService;
 import com.example.photogallery.service.PhotoService;
 import com.example.photogallery.service.PhotoStorageService;
 import java.io.IOException;
@@ -9,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -24,12 +27,31 @@ public class GalleryController {
     @Autowired
     private PhotoStorageService photoStorageService;
 
+    @Autowired
+    private PhotoSearchService searchService;
+
     @GetMapping("/")
     public String showGallery(
         Model model,
-        @RequestParam(value = "sort", defaultValue = "uploadDate") String sort
+        @RequestParam(value = "sort", defaultValue = "uploadDate") String sort,
+        @RequestParam(value = "search", required = false) String search // Add this
     ) {
-        List<Photo> photos = photoService.getAllPhotosSorted(sort);
+        List<Photo> photos;
+
+        if (search != null && !search.trim().isEmpty()) {
+            // Search functionality
+            photos = searchService.searchPhotos(
+                search,
+                PageRequest.of(0, 100, Sort.by(sort).descending())
+            );
+            model.addAttribute("searchQuery", search);
+            model.addAttribute("isSearchResult", true);
+        } else {
+            // Regular gallery view
+            photos = photoService.getAllPhotosSorted(sort);
+            model.addAttribute("isSearchResult", false);
+        }
+
         model.addAttribute("photos", photos);
         model.addAttribute("currentSort", sort);
         return "gallery";

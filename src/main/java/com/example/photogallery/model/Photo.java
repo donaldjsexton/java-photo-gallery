@@ -2,6 +2,7 @@ package com.example.photogallery.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Entity
 @Table(name = "photos")
@@ -20,7 +21,7 @@ public class Photo {
 
     //Exif Fields
     private String camera;
-    private String dateTaken;
+    private LocalDateTime dateTaken;
     private String gpsLatitude;
     private String gpsLongitude;
     private String orientation;
@@ -33,6 +34,19 @@ public class Photo {
 
     @Column(columnDefinition = "TEXT")
     private String allExifData;
+
+    @Column(name = "date_taken_parsed", columnDefinition = "DATE")
+    @Temporal(TemporalType.DATE)
+    private Date dateTakenParsed;
+
+    @Column(length = 500)
+    private String searchableText;
+
+    @Column(length = 100)
+    private String locationText;
+
+    @Column(length = 100)
+    private String cameraInfo;
 
     public Photo() {}
 
@@ -115,12 +129,44 @@ public class Photo {
         this.camera = camera;
     }
 
-    public String getDateTaken() {
+    public LocalDateTime getDateTaken() {
         return dateTaken;
     }
 
-    public void setDateTaken(String dateTaken) {
+    public void setDateTaken(LocalDateTime dateTaken) {
         this.dateTaken = dateTaken;
+    }
+
+    public Date getDateTakenParsed() {
+        return dateTakenParsed;
+    }
+
+    public void setDateTakenParsed(Date dateTakenParsed) {
+        this.dateTakenParsed = dateTakenParsed;
+    }
+
+    public String getSearchableText() {
+        return searchableText;
+    }
+
+    public void setSearchableText(String searchableText) {
+        this.searchableText = searchableText;
+    }
+
+    public String getLocationText() {
+        return locationText;
+    }
+
+    public void setLocationText(String locationText) {
+        this.locationText = locationText;
+    }
+
+    public String getCameraInfo() {
+        return cameraInfo;
+    }
+
+    public void setCameraInfo(String cameraInfo) {
+        this.cameraInfo = cameraInfo;
     }
 
     public String getGpsLatitude() {
