@@ -25,9 +25,13 @@ public class GalleryController {
     private PhotoStorageService photoStorageService;
 
     @GetMapping("/")
-    public String showGallery(Model model) {
-        List<Photo> photos = photoService.getAllPhotos();
+    public String showGallery(
+        Model model,
+        @RequestParam(value = "sort", defaultValue = "uploadDate") String sort
+    ) {
+        List<Photo> photos = photoService.getAllPhotosSorted(sort);
         model.addAttribute("photos", photos);
+        model.addAttribute("currentSort", sort);
         return "gallery";
     }
 
@@ -128,5 +132,29 @@ public class GalleryController {
         }
 
         return "redirect:/";
+    }
+
+    @GetMapping("/photo/{id}/exif")
+    @ResponseBody
+    public Map<String, Object> getPhotoExif(@PathVariable Long id) {
+        Photo photo = photoService.getPhotoById(id);
+        Map<String, Object> exifData = new HashMap<>();
+
+        if (photo != null) {
+            exifData.put("camera", photo.getCamera());
+            exifData.put("dateTaken", photo.getDateTaken());
+            exifData.put("gpsLatitude", photo.getGpsLatitude());
+            exifData.put("gpsLongitude", photo.getGpsLongitude());
+            exifData.put("orientation", photo.getOrientation());
+            exifData.put("focalLength", photo.getFocalLength());
+            exifData.put("aperture", photo.getAperture());
+            exifData.put("shutterSpeed", photo.getShutterSpeed());
+            exifData.put("iso", photo.getIso());
+            exifData.put("imageWidth", photo.getImageWidth());
+            exifData.put("imageHeight", photo.getImageHeight());
+            exifData.put("allExifData", photo.getAllExifData());
+        }
+
+        return exifData;
     }
 }

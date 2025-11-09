@@ -18,6 +18,22 @@ public class Photo {
     private String fileHash;
     private LocalDateTime uploadDate;
 
+    //Exif Fields
+    private String camera;
+    private String dateTaken;
+    private String gpsLatitude;
+    private String gpsLongitude;
+    private String orientation;
+    private String focalLength;
+    private String aperture;
+    private String shutterSpeed;
+    private String iso;
+    private String imageHeight;
+    private String imageWidth;
+
+    @Column(columnDefinition = "TEXT")
+    private String allExifData;
+
     public Photo() {}
 
     public Photo(
@@ -89,5 +105,101 @@ public class Photo {
 
     public void setUploadDate(LocalDateTime uploadDate) {
         this.uploadDate = uploadDate;
+    }
+
+    public String getCamera() {
+        return camera;
+    }
+
+    public void setCamera(String camera) {
+        this.camera = camera;
+    }
+
+    public String getDateTaken() {
+        return dateTaken;
+    }
+
+    public void setDateTaken(String dateTaken) {
+        this.dateTaken = dateTaken;
+    }
+
+    public String getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(String gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public String getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(String gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
+    }
+
+    public String getFocalLength() {
+        return focalLength;
+    }
+
+    public void setFocalLength(String focalLength) {
+        this.focalLength = focalLength;
+    }
+
+    public String getAperture() {
+        return aperture;
+    }
+
+    public void setAperture(String aperture) {
+        this.aperture = aperture;
+    }
+
+    public String getShutterSpeed() {
+        return shutterSpeed;
+    }
+
+    public void setShutterSpeed(String shutterSpeed) {
+        this.shutterSpeed = shutterSpeed;
+    }
+
+    public String getIso() {
+        return iso;
+    }
+
+    public void setIso(String iso) {
+        this.iso = iso;
+    }
+
+    public String getImageWidth() {
+        return imageWidth;
+    }
+
+    public void setImageWidth(String imageWidth) {
+        this.imageWidth = imageWidth;
+    }
+
+    public String getImageHeight() {
+        return imageHeight;
+    }
+
+    public void setImageHeight(String imageHeight) {
+        this.imageHeight = imageHeight;
+    }
+
+    public String getOrientation() {
+        return orientation;
+    }
+
+    public void setOrientation(String orientation) {
+        this.orientation = orientation;
+    }
+
+    public String getAllExifData() {
+        return allExifData;
+    }
+
+    public void setAllExifData(String allExifData) {
+        this.allExifData = allExifData;
     }
 }

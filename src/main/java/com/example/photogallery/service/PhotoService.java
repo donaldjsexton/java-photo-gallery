@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,6 +24,9 @@ public class PhotoService {
 
     @Autowired
     private PhotoStorageService photoStorageService;
+
+    @Autowired
+    private ExifService exifService;
 
     private String calculateFileHash(byte[] fileBytes) throws IOException {
         try {
@@ -118,6 +119,14 @@ public class PhotoService {
             fileHash
         );
 
+        try {
+            exifService.extractAndSetExifData(photo, fileBytes);
+        } catch (Exception e) {
+            System.err.println(
+                "EXIF extraction failed for " + filename + ": " + e.getMessage()
+            );
+        }
+
         return photoRepository.save(photo);
     }
 
@@ -175,6 +184,25 @@ public class PhotoService {
 
     public List<Photo> getAllPhotos() {
         return photoRepository.findAll();
+    }
+
+    public List<Photo> getAllPhotosSorted(String sortBy) {
+        switch (sortBy) {
+            case "dateTaken":
+                return photoRepository.findAllByOrderByDateTakenDesc();
+            case "dateTakenAsc":
+                return photoRepository.findAllByOrderByDateTakenAsc();
+            case "camera":
+                return photoRepository.findAllByOrderByCameraAsc();
+            case "uploadDate":
+                return photoRepository.findAllByOrderByUploadDateDesc();
+            case "withCamera":
+                return photoRepository.findPhotosWithCamera();
+            case "withDateTaken":
+                return photoRepository.findPhotosWithDateTaken();
+            default:
+                return photoRepository.findAll();
+        }
     }
 
     public Photo getPhotoById(Long id) {

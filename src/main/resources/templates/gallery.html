@@ -50,7 +50,58 @@
                     </div>
                 </div>
             </div>
-
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h6 class="mb-0">Sort Photos</h6>
+                        </div>
+                        <div class="col-md-6">
+                            <select
+                                class="form-select"
+                                onchange="window.location.href='/?sort=' + this.value"
+                            >
+                                <option
+                                    value="uploadDate"
+                                    th:selected="${currentSort == 'uploadDate'}"
+                                >
+                                    Latest Uploaded
+                                </option>
+                                <option
+                                    value="dateTaken"
+                                    th:selected="${currentSort == 'dateTaken'}"
+                                >
+                                    Date Taken (Newest)
+                                </option>
+                                <option
+                                    value="dateTakenAsc"
+                                    th:selected="${currentSort == 'dateTakenAsc'}"
+                                >
+                                    Date Taken (Oldest)
+                                </option>
+                                <option
+                                    value="camera"
+                                    th:selected="${currentSort == 'camera'}"
+                                >
+                                    Camera Model
+                                </option>
+                                <option
+                                    value="withCamera"
+                                    th:selected="${currentSort == 'withCamera'}"
+                                >
+                                    Has Camera Info
+                                </option>
+                                <option
+                                    value="withDateTaken"
+                                    th:selected="${currentSort == 'withDateTaken'}"
+                                >
+                                    Has Date Taken
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- Photo Gallery -->
             <div id="photo-gallery" class="masonry-grid">
                 <div th:each="photo : ${photos}" class="masonry-item">
@@ -62,6 +113,27 @@
                             onerror="this.src='/images/placeholder.jpg'"
                         />
                         <div class="card-body p-2">
+                            <div class="small text-muted mb-2">
+                                <div th:if="${photo.camera}" class="mb-1">
+                                    📷 <span th:text="${photo.camera}"></span>
+                                </div>
+                                <div th:if="${photo.dateTaken}" class="mb-1">
+                                    📅
+                                    <span th:text="${photo.dateTaken}"></span>
+                                </div>
+                                <div
+                                    th:if="${photo.imageWidth != null and photo.imageHeight != null}"
+                                    class="mb-1"
+                                >
+                                    📐
+                                    <span
+                                        th:text="${photo.imageWidth} + ' × ' + ${photo.imageHeight}"
+                                    ></span>
+                                </div>
+                                <div th:if="${photo.iso}" class="mb-1">
+                                    🎯 ISO <span th:text="${photo.iso}"></span>
+                                </div>
+                            </div>
                             <form
                                 th:action="@{/photo/{id}/delete(id=${photo.id})}"
                                 method="post"
