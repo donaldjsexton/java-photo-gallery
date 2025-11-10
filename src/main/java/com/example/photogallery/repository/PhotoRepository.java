@@ -1,6 +1,8 @@
 package com.example.photogallery.repository;
 
+import com.example.photogallery.model.Album;
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.model.enums.WorkflowStatus;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
@@ -76,5 +78,64 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
         @Param("startDate") Date startDate,
         @Param("endDate") Date endDate,
         Pageable pageable
+    );
+
+    // Album-related queries
+    List<Photo> findByAlbumOrderBySortOrderInAlbumAsc(Album album);
+
+    List<Photo> findByAlbumIsNullOrderByUploadDateDesc();
+
+    List<Photo> findByAlbumOrderBySortOrderInAlbumAsc(
+        Album album,
+        Pageable pageable
+    );
+
+    // Workflow status queries
+    List<Photo> findByWorkflowStatusOrderByUploadDateDesc(
+        WorkflowStatus status
+    );
+
+    List<Photo> findByAlbumAndWorkflowStatusOrderBySortOrderInAlbumAsc(
+        Album album,
+        WorkflowStatus status
+    );
+
+    // Featured photos
+    List<Photo> findByIsFeaturedTrueOrderBySortOrderInAlbumAsc();
+
+    List<Photo> findByIsPortfolioImageTrueOrderBySortOrderInAlbumAsc();
+
+    // Client-related queries
+    List<Photo> findByClientApprovedTrueOrderBySortOrderInAlbumAsc();
+
+    @Query(
+        "SELECT p FROM Photo p WHERE p.album.isClientVisible = true AND p.workflowStatus IN :statuses ORDER BY p.sortOrderInAlbum ASC"
+    )
+    List<Photo> findClientVisiblePhotos(
+        @Param("statuses") List<WorkflowStatus> statuses
+    );
+
+    // Album statistics
+    @Query("SELECT COUNT(p) FROM Photo p WHERE p.album = :album")
+    Long countByAlbum(@Param("album") Album album);
+
+    @Query(
+        "SELECT p.workflowStatus, COUNT(p) FROM Photo p WHERE p.album = :album GROUP BY p.workflowStatus"
+    )
+    List<Object[]> countByWorkflowStatusInAlbum(@Param("album") Album album);
+
+    // Advanced album searches
+    @Query(
+        "SELECT p FROM Photo p WHERE p.album = :album " +
+            "AND (:status IS NULL OR p.workflowStatus = :status) " +
+            "AND (:isFeatured IS NULL OR p.isFeatured = :isFeatured) " +
+            "AND (:clientApproved IS NULL OR p.clientApproved = :clientApproved) " +
+            "ORDER BY p.sortOrderInAlbum ASC"
+    )
+    List<Photo> findPhotosInAlbumWithFilters(
+        @Param("album") Album album,
+        @Param("status") WorkflowStatus status,
+        @Param("isFeatured") Boolean isFeatured,
+        @Param("clientApproved") Boolean clientApproved
     );
 }

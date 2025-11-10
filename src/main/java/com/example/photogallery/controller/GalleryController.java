@@ -2,6 +2,7 @@
 package com.example.photogallery.controller;
 
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.service.AlbumService;
 import com.example.photogallery.service.PhotoSearchService;
 import com.example.photogallery.service.PhotoService;
 import com.example.photogallery.service.PhotoStorageService;
@@ -12,6 +13,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +31,9 @@ public class GalleryController {
 
     @Autowired
     private PhotoSearchService searchService;
+
+    @Autowired
+    private AlbumService albumService;
 
     @GetMapping("/")
     public String showGallery(
@@ -178,5 +183,25 @@ public class GalleryController {
         }
 
         return exifData;
+    }
+
+    @PostMapping("/initialize-albums")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> initializeAlbums() {
+        Map<String, String> response = new HashMap<>();
+
+        try {
+            albumService.createDefaultHierarchy();
+            response.put("status", "success");
+            response.put("message", "Album hierarchy initialized successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put(
+                "message",
+                "Failed to initialize albums: " + e.getMessage()
+            );
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }

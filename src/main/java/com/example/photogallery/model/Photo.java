@@ -1,5 +1,6 @@
 package com.example.photogallery.model;
 
+import com.example.photogallery.model.enums.WorkflowStatus;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -48,7 +49,50 @@ public class Photo {
     @Column(length = 100)
     private String cameraInfo;
 
+    // Album relationship
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "album_id")
+    private Album album;
+
+    // Professional workflow fields
+    @Enumerated(EnumType.STRING)
+    @Column(name = "workflow_status", nullable = false)
+    private WorkflowStatus workflowStatus = WorkflowStatus.RAW;
+
+    @Column(name = "sort_order_in_album", nullable = false)
+    private Integer sortOrderInAlbum = 0;
+
+    @Column(name = "is_featured", nullable = false)
+    private Boolean isFeatured = false;
+
+    @Column(name = "client_approved", nullable = false)
+    private Boolean clientApproved = false;
+
+    @Column(name = "is_portfolio_image", nullable = false)
+    private Boolean isPortfolioImage = false;
+
+    @Column(length = 1000)
+    private String clientNotes;
+
+    @Column(length = 1000)
+    private String internalNotes;
+
     public Photo() {}
+
+    public Photo(
+        String originalName,
+        String fileName,
+        String contentType,
+        Long size,
+        String fileHash,
+        Album album
+    ) {
+        this(originalName, fileName, contentType, size, fileHash);
+        this.album = album;
+        if (album != null) {
+            this.sortOrderInAlbum = album.getPhotoCount();
+        }
+    }
 
     public Photo(
         String originalName,
@@ -167,6 +211,70 @@ public class Photo {
 
     public void setCameraInfo(String cameraInfo) {
         this.cameraInfo = cameraInfo;
+    }
+
+    public Album getAlbum() {
+        return album;
+    }
+
+    public void setAlbum(Album album) {
+        this.album = album;
+    }
+
+    public WorkflowStatus getWorkflowStatus() {
+        return workflowStatus;
+    }
+
+    public void setWorkflowStatus(WorkflowStatus workflowStatus) {
+        this.workflowStatus = workflowStatus;
+    }
+
+    public Integer getSortOrderInAlbum() {
+        return sortOrderInAlbum;
+    }
+
+    public void setSortOrderInAlbum(Integer sortOrderInAlbum) {
+        this.sortOrderInAlbum = sortOrderInAlbum;
+    }
+
+    public Boolean getIsFeatured() {
+        return isFeatured;
+    }
+
+    public void setIsFeatured(Boolean isFeatured) {
+        this.isFeatured = isFeatured;
+    }
+
+    public Boolean getClientApproved() {
+        return clientApproved;
+    }
+
+    public void setClientApproved(Boolean clientApproved) {
+        this.clientApproved = clientApproved;
+    }
+
+    public Boolean getIsPortfolioImage() {
+        return isPortfolioImage;
+    }
+
+    public void setIsPortfolioImage(Boolean isPortfolioImage) {
+        this.isPortfolioImage = isPortfolioImage;
+    }
+
+    public String getClientNotes() {
+        return clientNotes;
+    }
+
+    public void setClientNotes(String clientNotes) {
+        this.clientNotes = clientNotes;
+    }
+
+    public String getInternalNotes() {
+        return internalNotes;
+    }
+
+    public void setInternalNotes(String internalNotes) {
+        this.internalNotes = internalNotes;
     }
 
     public String getGpsLatitude() {

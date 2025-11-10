@@ -1,6 +1,8 @@
 package com.example.photogallery.service;
 
+import com.example.photogallery.model.Album;
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.model.enums.WorkflowStatus;
 import com.example.photogallery.repository.PhotoRepository;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
@@ -211,5 +213,66 @@ public class PhotoService {
 
     public void deletePhoto(Long id) {
         photoRepository.deleteById(id);
+    }
+
+    // Album-related methods
+    public List<Photo> getPhotosInAlbum(Album album) {
+        return photoRepository.findByAlbumOrderBySortOrderInAlbumAsc(album);
+    }
+
+    public List<Photo> getPhotosInAlbum(Album album, WorkflowStatus status) {
+        if (status != null) {
+            return photoRepository.findByAlbumAndWorkflowStatusOrderBySortOrderInAlbumAsc(
+                album,
+                status
+            );
+        }
+        return getPhotosInAlbum(album);
+    }
+
+    public List<Photo> getUnassignedPhotos() {
+        return photoRepository.findByAlbumIsNullOrderByUploadDateDesc();
+    }
+
+    public List<Photo> getPhotosByWorkflowStatus(WorkflowStatus status) {
+        return photoRepository.findByWorkflowStatusOrderByUploadDateDesc(
+            status
+        );
+    }
+
+    public List<Photo> getFeaturedPhotos() {
+        return photoRepository.findByIsFeaturedTrueOrderBySortOrderInAlbumAsc();
+    }
+
+    public List<Photo> getPortfolioPhotos() {
+        return photoRepository.findByIsPortfolioImageTrueOrderBySortOrderInAlbumAsc();
+    }
+
+    public List<Photo> getClientApprovedPhotos() {
+        return photoRepository.findByClientApprovedTrueOrderBySortOrderInAlbumAsc();
+    }
+
+    public Optional<Photo> findById(Long id) {
+        return photoRepository.findById(id);
+    }
+
+    public void updateWorkflowStatus(Photo photo, WorkflowStatus status) {
+        photo.setWorkflowStatus(status);
+        photoRepository.save(photo);
+    }
+
+    public void toggleFeatured(Photo photo) {
+        photo.setIsFeatured(!photo.getIsFeatured());
+        photoRepository.save(photo);
+    }
+
+    public void togglePortfolioImage(Photo photo) {
+        photo.setIsPortfolioImage(!photo.getIsPortfolioImage());
+        photoRepository.save(photo);
+    }
+
+    public void setClientApproval(Photo photo, boolean approved) {
+        photo.setClientApproved(approved);
+        photoRepository.save(photo);
     }
 }
