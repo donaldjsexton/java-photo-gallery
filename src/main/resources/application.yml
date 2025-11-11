@@ -1,0 +1,33 @@
+server:
+  port: 8090
+  error:
+    include-message: always
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/gallery_dev
+    username: gallery
+    password: gallery
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+
+  flyway:
+    enabled: true
+
+  mvc:
+    hiddenmethod:
+      filter:
+        enabled: true
+
+app:
+  upload:
+    dir: uploads
