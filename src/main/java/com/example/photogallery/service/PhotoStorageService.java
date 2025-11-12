@@ -11,7 +11,9 @@ public class PhotoStorageService {
 
     private final Path uploadPath;
 
-    public PhotoStorageService(@Value("${app.upload.dir}") String uploadDir) {
+    public PhotoStorageService(
+        @Value("${photo.gallery.upload.dir}") String uploadDir
+    ) {
         this.uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
     }
 
