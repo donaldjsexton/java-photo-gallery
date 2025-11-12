@@ -1,42 +1,69 @@
 package com.example.photogallery.service;
 
+import jakarta.annotation.PostConstruct;
+import java.io.IOException;
+import java.nio.file.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.UUID;
 
 @Service
 public class PhotoStorageService {
 
-    @Value("${app.upload.dir}")
-    private String uploadDir;
+    private final Path uploadPath;
 
-    public String storeFile(MultipartFile file) throws IOException {
-        Path uploadPath = Paths.get(uploadDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
+    public PhotoStorageService(@Value("${app.upload.dir}") String uploadDir) {
+        this.uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+    }
+
+    @PostConstruct
+    void init() throws IOException {
+        Files.createDirectories(uploadPath);
+    }
+
+    public String storeFile(byte[] bytes, String storedFileName)
+        throws IOException {
+        if (bytes == null || bytes.length == 0) {
+            throw new IOException("Empty file bytes");
+        }
+        if (storedFileName == null || storedFileName.isBlank()) {
+            throw new IOException("Target file name required");
+        }
+        if (
+            storedFileName.contains("..") ||
+            storedFileName.contains("/") ||
+            storedFileName.contains("\\")
+        ) {
+            throw new IOException("Invalid file name");
+        }
+        Path target = uploadPath.resolve(storedFileName).normalize();
+        if (!target.startsWith(uploadPath)) {
+            throw new IOException("Resolved path escapes upload root");
         }
 
-        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        Path filePath = uploadPath.resolve(fileName);
-        Files.write(filePath, file.getBytes());
-
-        return fileName;
+        Files.write(target, bytes, StandardOpenOption.CREATE_NEW);
+        return storedFileName;
     }
 
-    public File getFile(String fileName) {
-        Path filePath = Paths.get(uploadDir, fileName);
-        return filePath.toFile();
+    public Path getFilePath(String storedFileName) throws IOException {
+        if (
+            storedFileName == null ||
+            storedFileName.isBlank() ||
+            storedFileName.contains("..") ||
+            storedFileName.contains("/") ||
+            storedFileName.contains("\\")
+        ) {
+            throw new IOException("Invalid file name");
+        }
+
+        Path p = uploadPath.resolve(storedFileName).normalize();
+        if (!p.startsWith(uploadPath)) {
+            throw new IOException("Resolved path escapes upload root");
+        }
+
+        return p;
     }
 
-    public boolean deleteFile(String fileName) {
-        File file = getFile(fileName);
-        return file.delete();
+    public boolean deleteFile(String storedFileName) throws IOException {
+        return Files.deleteIfExists(getFilePath(storedFileName));
     }
 }

@@ -3,16 +3,17 @@ package com.example.photogallery.service;
 import com.example.photogallery.model.Photo;
 import com.example.photogallery.repository.PhotoRepository;
 import jakarta.annotation.PostConstruct;
+import jakarta.transaction.Transactional;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,6 +28,9 @@ public class PhotoService {
 
     @Autowired
     private ExifService exifService;
+
+    @Value("${photo.gallery.upload.dir}")
+    private String uploadDir;
 
     private String calculateFileHash(byte[] fileBytes) throws IOException {
         try {
@@ -47,15 +51,18 @@ public class PhotoService {
     @PostConstruct
     public void initializeExistingImages() {
         try {
-            Path uploadPath = Paths.get("uploads");
+            Path uploadPath = Paths.get("uploadDir");
             if (!Files.exists(uploadPath)) {
                 return;
             }
 
-            List<String> existingFiles = Files.list(uploadPath)
-                .filter(Files::isRegularFile)
-                .map(path -> path.getFileName().toString())
-                .collect(Collectors.toList());
+            List<String> existingFiles;
+            try (var stream = Files.list(uploadPath)) {
+                existingFiles = stream
+                    .filter(Files::isRegularFile)
+                    .map(path -> path.getFileName().toString())
+                    .collect(Collectors.toList());
+            }
 
             List<String> dbFiles = getAllPhotos()
                 .stream()
@@ -86,17 +93,18 @@ public class PhotoService {
         }
     }
 
+    @Transactional
     public Photo savePhoto(MultipartFile file) throws IOException {
         String filename = file.getOriginalFilename();
         String contentType = file.getContentType();
         if (
             filename == null ||
-            !filename.matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$")
+            !filename.toLowerCase().matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$")
         ) {
             throw new IOException("Invalid file type");
         }
 
-        if (!contentType.startsWith("image/")) {
+        if (contentType == null || !contentType.startsWith("image/")) {
             throw new IOException("Not an image file");
         }
         byte[] fileBytes = file.getBytes();
@@ -109,7 +117,10 @@ public class PhotoService {
             throw new IOException("Duplicate file");
         }
 
-        String fileName = photoStorageService.storeFile(file);
+        String fileName =
+            UUID.randomUUID().toString() +
+            getCanonicalExtension(file.getOriginalFilename());
+        photoStorageService.storeFile(fileBytes, fileName);
 
         Photo photo = new Photo(
             file.getOriginalFilename(),
@@ -130,6 +141,7 @@ public class PhotoService {
         return photoRepository.save(photo);
     }
 
+    @Transactional
     public Photo updatePhoto(Long id, MultipartFile file) throws IOException {
         Photo existingPhoto = photoRepository.findById(id).orElse(null);
         if (existingPhoto == null) {
@@ -140,12 +152,12 @@ public class PhotoService {
         String contentType = file.getContentType();
         if (
             filename == null ||
-            !filename.matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$")
+            !filename.toLowerCase().matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$")
         ) {
             throw new IOException("Invalid file type");
         }
 
-        if (!contentType.startsWith("image/")) {
+        if (contentType == null || !contentType.startsWith("image/")) {
             throw new IOException("Not an image file");
         }
 
@@ -170,7 +182,10 @@ public class PhotoService {
 
         // Delete old file and store new one
         photoStorageService.deleteFile(existingPhoto.getFileName());
-        String newFileName = photoStorageService.storeFile(file);
+        String newFileName =
+            UUID.randomUUID().toString() +
+            getCanonicalExtension(file.getOriginalFilename());
+        photoStorageService.storeFile(fileBytes, newFileName);
 
         // Update photo record
         existingPhoto.setOriginalName(file.getOriginalFilename());
@@ -209,7 +224,25 @@ public class PhotoService {
         return photoRepository.findById(id).orElse(null);
     }
 
-    public void deletePhoto(Long id) {
+    @Transactional
+    public void deletePhoto(Long id) throws IOException {
+        Photo p = photoRepository
+            .findById(id)
+            .orElseThrow(() ->
+                new IOException("Photo not found with id " + id)
+            );
+        photoStorageService.deleteFile(p.getFileName());
         photoRepository.deleteById(id);
+    }
+
+    private static String getCanonicalExtension(String name) {
+        if (name == null) return "";
+        String base = Paths.get(name).getFileName().toString();
+        int dot = base.lastIndexOf('.');
+        if (dot < 0) return "";
+        String ext = base.substring(dot).toLowerCase();
+        if (".jpeg".equals(ext)) return ".jpg";
+        if (".tif".equals(ext)) return ".tiff";
+        return ext;
     }
 }

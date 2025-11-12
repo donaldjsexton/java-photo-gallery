@@ -4,7 +4,6 @@ package com.example.photogallery.controller;
 import com.example.photogallery.model.Photo;
 import com.example.photogallery.service.PhotoSearchService;
 import com.example.photogallery.service.PhotoService;
-import com.example.photogallery.service.PhotoStorageService;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -23,9 +22,6 @@ public class GalleryController {
 
     @Autowired
     private PhotoService photoService;
-
-    @Autowired
-    private PhotoStorageService photoStorageService;
 
     @Autowired
     private PhotoSearchService searchService;
@@ -114,14 +110,20 @@ public class GalleryController {
     ) {
         Photo photo = photoService.getPhotoById(id);
         if (photo != null) {
-            photoStorageService.deleteFile(photo.getFileName());
-            photoService.deletePhoto(id);
-            redirectAttributes.addFlashAttribute(
-                "message",
-                "Photo deleted successfully!"
-            );
+            try {
+                photoService.deletePhoto(id); // service handles disk + DB
+                redirectAttributes.addFlashAttribute(
+                    "message",
+                    "Photo deleted successfully!"
+                );
+            } catch (IOException e) {
+                redirectAttributes.addFlashAttribute(
+                    "error",
+                    "Delete failed: " + e.getMessage()
+                );
+            }
         } else {
-            redirectAttributes.addFlashAttribute("message", "Photo not found!");
+            redirectAttributes.addFlashAttribute("message", "Photo not found.");
         }
         return "redirect:/";
     }
