@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -89,6 +90,10 @@ public class PhotoRestController {
     @GetMapping("/{id}")
     public ResponseEntity<Photo> getOne(@PathVariable Long id) {
         Photo p = photoService.getPhotoById(id);
+        if (p == null) {
+            // This is what GlobalExceptionHandler picks up and converts to a 404 JSON
+            throw new NoSuchElementException("Photo not found with id " + id);
+        }
         return ResponseEntity.ok(p);
     }
 
