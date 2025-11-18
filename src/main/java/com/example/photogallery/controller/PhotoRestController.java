@@ -43,12 +43,19 @@ public class PhotoRestController {
         this.photoSearchService = photoSearchService;
     }
 
-    // POST /api/photos — multipart upload → Photo JSON
+    // onDuplicate = cancel | skip | overwrite
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Photo> upload(
-        @RequestParam("file") MultipartFile file
+        @RequestParam("file") MultipartFile file,
+        @RequestParam(
+            name = "onDuplicate",
+            defaultValue = "cancel"
+        ) String onDuplicate
     ) {
-        Photo saved = photoService.savePhoto(file);
+        PhotoService.DuplicateHandling handling =
+            PhotoService.DuplicateHandling.fromString(onDuplicate);
+
+        Photo saved = photoService.savePhoto(file, handling);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 

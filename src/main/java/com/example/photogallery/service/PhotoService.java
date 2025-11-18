@@ -32,6 +32,27 @@ public class PhotoService {
     @Value("${photo.gallery.upload.dir}")
     private String uploadDir;
 
+    //Duplicate Enum
+    public enum DuplicateHandling {
+        CANCEL,
+        SKIP,
+        OVERWRITE;
+
+        public static DuplicateHandling fromString(String raw) {
+            if (raw == null || raw.isBlank()) {
+                return CANCEL;
+            }
+            switch (raw.toLowerCase()) {
+                case "skip":
+                    return SKIP;
+                case "overwrite":
+                    return OVERWRITE;
+                default:
+                    return CANCEL;
+            }
+        }
+    }
+
     // ---------------------------------------------------------
     // File Hash
     // ---------------------------------------------------------
@@ -107,8 +128,12 @@ public class PhotoService {
     // ---------------------------------------------------------
     // Upload new photo
     // ---------------------------------------------------------
-    @Transactional
     public Photo savePhoto(MultipartFile file) {
+        return savePhoto(file, DuplicateHandling.CANCEL);
+    }
+
+    @Transactional
+    public Photo savePhoto(MultipartFile file, DuplicateHandling handling) {
         String filename = file.getOriginalFilename();
         String contentType = file.getContentType();
 
@@ -132,11 +157,45 @@ public class PhotoService {
 
         String fileHash = calculateFileHash(fileBytes);
 
-        Optional<Photo> existingPhoto = photoRepository.findByFileHash(
+        Optional<Photo> existingPhotoOpt = photoRepository.findByFileHash(
             fileHash
         );
-        if (existingPhoto.isPresent()) {
-            throw new IllegalArgumentException("Duplicate file");
+        if (existingPhotoOpt.isPresent()) {
+            Photo existing = existingPhotoOpt.get();
+
+            switch (handling) {
+                case CANCEL:
+                    // Current behavior
+                    throw new IllegalArgumentException("Duplicate file");
+                case SKIP:
+                    // Don’t write anything, just reuse the existing row
+                    return existing;
+                case OVERWRITE:
+                    try {
+                        // Replace file on disk for that existing photo
+                        photoStorageService.deleteFile(existing.getFileName());
+
+                        String newStoredName =
+                            UUID.randomUUID().toString() +
+                            getCanonicalExtension(filename);
+
+                        photoStorageService.storeFile(fileBytes, newStoredName);
+
+                        existing.setOriginalName(filename);
+                        existing.setFileName(newStoredName);
+                        existing.setContentType(contentType);
+                        existing.setSize(file.getSize());
+                        existing.setFileHash(fileHash);
+
+                        exifService.extractAndSetExifData(existing, fileBytes);
+                        return photoRepository.save(existing);
+                    } catch (Exception e) {
+                        throw new RuntimeException(
+                            "Failed to overwrite existing file",
+                            e
+                        );
+                    }
+            }
         }
 
         String fileName =
@@ -203,9 +262,7 @@ public class PhotoService {
 
         // Same file as current → 400
         if (newFileHash.equals(existingPhoto.getFileHash())) {
-            throw new IllegalArgumentException(
-                "File is identical to current photo"
-            );
+            return existingPhoto;
         }
 
         // New file already used by another photo → 400

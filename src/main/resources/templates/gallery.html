@@ -39,6 +39,32 @@
                                 required
                             />
                         </div>
+
+                        <div class="mb-3">
+                            <label for="onDuplicate" class="form-label"
+                                >On Duplicate File</label
+                            >
+                            <select
+                                class="form-select"
+                                id="onDuplicate"
+                                name="onDuplicate"
+                            >
+                                <option value="cancel" selected>
+                                    Cancel upload (error)
+                                </option>
+                                <option value="skip">
+                                    Skip duplicates, keep existing
+                                </option>
+                                <option value="overwrite">
+                                    Overwrite existing file
+                                </option>
+                            </select>
+                            <div class="form-text">
+                                Applies when an uploaded photo already exists
+                                (same hash).
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn btn-primary">
                             Upload
                         </button>
