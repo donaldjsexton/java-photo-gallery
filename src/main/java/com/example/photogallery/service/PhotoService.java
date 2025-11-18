@@ -4,7 +4,6 @@ import com.example.photogallery.model.Photo;
 import com.example.photogallery.repository.PhotoRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
-import java.io.IOException;
 import java.nio.file.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -33,6 +32,9 @@ public class PhotoService {
     @Value("${photo.gallery.upload.dir}")
     private String uploadDir;
 
+    // ---------------------------------------------------------
+    // File Hash
+    // ---------------------------------------------------------
     private String calculateFileHash(byte[] fileBytes) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -49,6 +51,9 @@ public class PhotoService {
         }
     }
 
+    // ---------------------------------------------------------
+    // Initialize existing orphaned images
+    // ---------------------------------------------------------
     @PostConstruct
     public void initializeExistingImages() {
         try {
@@ -72,23 +77,23 @@ public class PhotoService {
 
             for (String fileName : existingFiles) {
                 if (!dbFiles.contains(fileName)) {
-                    // Create photo record for orphaned file
                     Path filePath = uploadPath.resolve(fileName);
                     byte[] fileBytes = Files.readAllBytes(filePath);
                     String fileHash = calculateFileHash(fileBytes);
 
+                    // Skip if hash already known to DB
                     if (photoRepository.findByFileHash(fileHash).isPresent()) {
-                        // File already exists in the database
                         continue;
                     }
 
                     Photo photo = new Photo(
-                        fileName, // Use filename as original name since we don't know the original
                         fileName,
-                        "application/octet-stream", // Generic content type
+                        fileName,
+                        "application/octet-stream",
                         Files.size(filePath),
                         fileHash
                     );
+
                     photoRepository.save(photo);
                 }
             }
@@ -99,10 +104,14 @@ public class PhotoService {
         }
     }
 
+    // ---------------------------------------------------------
+    // Upload new photo
+    // ---------------------------------------------------------
     @Transactional
     public Photo savePhoto(MultipartFile file) {
         String filename = file.getOriginalFilename();
         String contentType = file.getContentType();
+
         if (
             filename == null ||
             !filename.toLowerCase().matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$")
@@ -140,9 +149,9 @@ public class PhotoService {
         }
 
         Photo photo = new Photo(
-            file.getOriginalFilename(),
+            filename,
             fileName,
-            file.getContentType(),
+            contentType,
             file.getSize(),
             fileHash
         );
@@ -158,6 +167,9 @@ public class PhotoService {
         return photoRepository.save(photo);
     }
 
+    // ---------------------------------------------------------
+    // Update / Replace photo file
+    // ---------------------------------------------------------
     @Transactional
     public Photo updatePhoto(Long id, MultipartFile file) {
         Photo existingPhoto = photoRepository
@@ -168,6 +180,7 @@ public class PhotoService {
 
         String filename = file.getOriginalFilename();
         String contentType = file.getContentType();
+
         if (
             filename == null ||
             !filename.toLowerCase().matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$")
@@ -220,13 +233,11 @@ public class PhotoService {
             existingPhoto.setContentType(contentType);
             existingPhoto.setSize(file.getSize());
             existingPhoto.setFileHash(newFileHash);
-
-            exifService.extractAndSetExifData(existingPhoto, fileBytes);
         } catch (Exception e) {
             throw new RuntimeException("Failed to replace stored file", e);
         }
 
-        // Re-extract EXIF for the new image
+        // EXIF extraction for the new image (log-only if it fails)
         try {
             exifService.extractAndSetExifData(existingPhoto, fileBytes);
         } catch (Exception e) {
@@ -241,6 +252,9 @@ public class PhotoService {
         return photoRepository.save(existingPhoto);
     }
 
+    // ---------------------------------------------------------
+    // Queries
+    // ---------------------------------------------------------
     public List<Photo> getAllPhotos() {
         return photoRepository.findAll();
     }
@@ -268,17 +282,29 @@ public class PhotoService {
         return photoRepository.findById(id).orElse(null);
     }
 
+    // ---------------------------------------------------------
+    // Delete photo
+    // ---------------------------------------------------------
     @Transactional
-    public void deletePhoto(Long id) throws IOException {
+    public void deletePhoto(Long id) {
         Photo p = photoRepository
             .findById(id)
             .orElseThrow(() ->
                 new NoSuchElementException("Photo not found with id " + id)
             );
-        photoStorageService.deleteFile(p.getFileName());
+
+        try {
+            photoStorageService.deleteFile(p.getFileName());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete stored file", e);
+        }
+
         photoRepository.deleteById(id);
     }
 
+    // ---------------------------------------------------------
+    // Utility
+    // ---------------------------------------------------------
     private static String getCanonicalExtension(String name) {
         if (name == null) return "";
         String base = Paths.get(name).getFileName().toString();

@@ -3,7 +3,6 @@ package com.example.photogallery.controller;
 import com.example.photogallery.model.Photo;
 import com.example.photogallery.service.PhotoSearchService;
 import com.example.photogallery.service.PhotoService;
-import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import org.springframework.data.domain.Page;
@@ -12,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -122,7 +122,7 @@ public class GalleryController {
         return "redirect:/";
     }
 
-    @PostMapping("/photo/{id}/delete")
+    @DeleteMapping("/photo/{id}/delete")
     public String deletePhoto(
         @PathVariable Long id,
         RedirectAttributes redirectAttributes
@@ -130,15 +130,10 @@ public class GalleryController {
         try {
             photoService.deletePhoto(id);
             redirectAttributes.addFlashAttribute("message", "Photo deleted.");
-        } catch (IOException ex) {
-            redirectAttributes.addFlashAttribute(
-                "message",
-                "Failed to delete photo."
-            );
         } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute(
                 "message",
-                "Unexpected error deleting photo."
+                "Failed to delete photo."
             );
         }
         return "redirect:/";

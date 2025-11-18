@@ -3,7 +3,6 @@ package com.example.photogallery.controller;
 import com.example.photogallery.model.Photo;
 import com.example.photogallery.service.PhotoSearchService;
 import com.example.photogallery.service.PhotoService;
-import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -49,12 +48,8 @@ public class PhotoRestController {
     public ResponseEntity<Photo> upload(
         @RequestParam("file") MultipartFile file
     ) {
-        try {
-            Photo saved = photoService.savePhoto(file);
-            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to save photo", e);
-        }
+        Photo saved = photoService.savePhoto(file);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     // PUT /api/photos/{id} — replace file
@@ -63,12 +58,8 @@ public class PhotoRestController {
         @PathVariable Long id,
         @RequestParam("file") MultipartFile file
     ) {
-        try {
-            Photo updated = photoService.updatePhoto(id, file);
-            return ResponseEntity.ok(updated);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update photo", e);
-        }
+        Photo updated = photoService.updatePhoto(id, file);
+        return ResponseEntity.ok(updated);
     }
 
     // GET /api/photos — list; sortBy in {uploadDate,dateTaken,dateTakenAsc,camera,withCamera,withDateTaken}
@@ -91,7 +82,7 @@ public class PhotoRestController {
     public ResponseEntity<Photo> getOne(@PathVariable Long id) {
         Photo p = photoService.getPhotoById(id);
         if (p == null) {
-            // This is what GlobalExceptionHandler picks up and converts to a 404 JSON
+            // Let GlobalExceptionHandler turn this into a 404 JSON
             throw new NoSuchElementException("Photo not found with id " + id);
         }
         return ResponseEntity.ok(p);
@@ -100,12 +91,8 @@ public class PhotoRestController {
     // DELETE /api/photos/{id} — remove
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        try {
-            photoService.deletePhoto(id);
-            return ResponseEntity.noContent().build();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to delete photo", e);
-        }
+        photoService.deletePhoto(id);
+        return ResponseEntity.noContent().build();
     }
 
     // GET /api/photos/search?query=&camera=&start=&end=&page=&size=
