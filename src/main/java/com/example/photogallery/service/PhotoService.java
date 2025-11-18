@@ -9,6 +9,7 @@ import java.nio.file.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -32,7 +33,7 @@ public class PhotoService {
     @Value("${photo.gallery.upload.dir}")
     private String uploadDir;
 
-    private String calculateFileHash(byte[] fileBytes) throws IOException {
+    private String calculateFileHash(byte[] fileBytes) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashBytes = digest.digest(fileBytes);
@@ -44,14 +45,14 @@ public class PhotoService {
             }
             return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new IOException("SHA-256 algorithm not available", e);
+            throw new RuntimeException("SHA-256 algorithm not available", e);
         }
     }
 
     @PostConstruct
     public void initializeExistingImages() {
         try {
-            Path uploadPath = Paths.get("uploadDir");
+            Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 return;
             }
@@ -76,6 +77,11 @@ public class PhotoService {
                     byte[] fileBytes = Files.readAllBytes(filePath);
                     String fileHash = calculateFileHash(fileBytes);
 
+                    if (photoRepository.findByFileHash(fileHash).isPresent()) {
+                        // File already exists in the database
+                        continue;
+                    }
+
                     Photo photo = new Photo(
                         fileName, // Use filename as original name since we don't know the original
                         fileName,
@@ -86,7 +92,7 @@ public class PhotoService {
                     photoRepository.save(photo);
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.err.println(
                 "Error initializing existing images: " + e.getMessage()
             );
@@ -94,33 +100,44 @@ public class PhotoService {
     }
 
     @Transactional
-    public Photo savePhoto(MultipartFile file) throws IOException {
+    public Photo savePhoto(MultipartFile file) {
         String filename = file.getOriginalFilename();
         String contentType = file.getContentType();
         if (
             filename == null ||
             !filename.toLowerCase().matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$")
         ) {
-            throw new IOException("Invalid file type");
+            throw new IllegalArgumentException("Invalid file type");
         }
 
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IOException("Not an image file");
+            throw new IllegalArgumentException("Not an image file");
         }
-        byte[] fileBytes = file.getBytes();
+
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read uploaded file bytes", e);
+        }
+
         String fileHash = calculateFileHash(fileBytes);
 
         Optional<Photo> existingPhoto = photoRepository.findByFileHash(
             fileHash
         );
         if (existingPhoto.isPresent()) {
-            throw new IOException("Duplicate file");
+            throw new IllegalArgumentException("Duplicate file");
         }
 
         String fileName =
-            UUID.randomUUID().toString() +
-            getCanonicalExtension(file.getOriginalFilename());
-        photoStorageService.storeFile(fileBytes, fileName);
+            UUID.randomUUID().toString() + getCanonicalExtension(filename);
+
+        try {
+            photoStorageService.storeFile(fileBytes, fileName);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to store uploaded file", e);
+        }
 
         Photo photo = new Photo(
             file.getOriginalFilename(),
@@ -142,11 +159,12 @@ public class PhotoService {
     }
 
     @Transactional
-    public Photo updatePhoto(Long id, MultipartFile file) throws IOException {
-        Photo existingPhoto = photoRepository.findById(id).orElse(null);
-        if (existingPhoto == null) {
-            throw new IOException("Photo not found");
-        }
+    public Photo updatePhoto(Long id, MultipartFile file) {
+        Photo existingPhoto = photoRepository
+            .findById(id)
+            .orElseThrow(() ->
+                new NoSuchElementException("Photo not found with id " + id)
+            );
 
         String filename = file.getOriginalFilename();
         String contentType = file.getContentType();
@@ -154,22 +172,30 @@ public class PhotoService {
             filename == null ||
             !filename.toLowerCase().matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$")
         ) {
-            throw new IOException("Invalid file type");
+            throw new IllegalArgumentException("Invalid file type");
         }
 
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IOException("Not an image file");
+            throw new IllegalArgumentException("Not an image file");
         }
 
-        byte[] fileBytes = file.getBytes();
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read uploaded file bytes", e);
+        }
+
         String newFileHash = calculateFileHash(fileBytes);
 
-        // Check if the new file is different from current
+        // Same file as current → 400
         if (newFileHash.equals(existingPhoto.getFileHash())) {
-            throw new IOException("File is identical to current photo");
+            throw new IllegalArgumentException(
+                "File is identical to current photo"
+            );
         }
 
-        // Check if new file hash already exists in other photos
+        // New file already used by another photo → 400
         Optional<Photo> duplicatePhoto = photoRepository.findByFileHash(
             newFileHash
         );
@@ -177,22 +203,40 @@ public class PhotoService {
             duplicatePhoto.isPresent() &&
             !duplicatePhoto.get().getId().equals(id)
         ) {
-            throw new IOException("File already exists (duplicate detected)");
+            throw new IllegalArgumentException(
+                "File already exists (duplicate detected)"
+            );
         }
 
         // Delete old file and store new one
-        photoStorageService.deleteFile(existingPhoto.getFileName());
-        String newFileName =
-            UUID.randomUUID().toString() +
-            getCanonicalExtension(file.getOriginalFilename());
-        photoStorageService.storeFile(fileBytes, newFileName);
+        try {
+            photoStorageService.deleteFile(existingPhoto.getFileName());
+            String newFileName =
+                UUID.randomUUID().toString() + getCanonicalExtension(filename);
+            photoStorageService.storeFile(fileBytes, newFileName);
 
-        // Update photo record
-        existingPhoto.setOriginalName(file.getOriginalFilename());
-        existingPhoto.setFileName(newFileName);
-        existingPhoto.setContentType(file.getContentType());
-        existingPhoto.setSize(file.getSize());
-        existingPhoto.setFileHash(newFileHash);
+            existingPhoto.setOriginalName(filename);
+            existingPhoto.setFileName(newFileName);
+            existingPhoto.setContentType(contentType);
+            existingPhoto.setSize(file.getSize());
+            existingPhoto.setFileHash(newFileHash);
+
+            exifService.extractAndSetExifData(existingPhoto, fileBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to replace stored file", e);
+        }
+
+        // Re-extract EXIF for the new image
+        try {
+            exifService.extractAndSetExifData(existingPhoto, fileBytes);
+        } catch (Exception e) {
+            System.err.println(
+                "EXIF extraction failed for updated photo " +
+                    filename +
+                    ": " +
+                    e.getMessage()
+            );
+        }
 
         return photoRepository.save(existingPhoto);
     }
@@ -229,7 +273,7 @@ public class PhotoService {
         Photo p = photoRepository
             .findById(id)
             .orElseThrow(() ->
-                new IOException("Photo not found with id " + id)
+                new NoSuchElementException("Photo not found with id " + id)
             );
         photoStorageService.deleteFile(p.getFileName());
         photoRepository.deleteById(id);

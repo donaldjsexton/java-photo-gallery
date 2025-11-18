@@ -52,7 +52,7 @@ public class PhotoRestController {
         try {
             Photo saved = photoService.savePhoto(file);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Failed to save photo", e);
         }
     }
@@ -66,7 +66,7 @@ public class PhotoRestController {
         try {
             Photo updated = photoService.updatePhoto(id, file);
             return ResponseEntity.ok(updated);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Failed to update photo", e);
         }
     }

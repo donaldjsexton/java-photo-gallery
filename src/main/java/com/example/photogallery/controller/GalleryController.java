@@ -95,8 +95,6 @@ public class GalleryController {
                 } catch (IllegalArgumentException ex) {
                     // Treat IllegalArgumentException from service as "duplicate" / bad input
                     duplicateCount++;
-                } catch (IOException ex) {
-                    errorCount++;
                 } catch (RuntimeException ex) {
                     // Catch-all to avoid blowing up the upload page
                     errorCount++;
