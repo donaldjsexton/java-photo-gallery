@@ -1,6 +1,9 @@
 package com.example.photogallery.controller;
 
+import com.example.photogallery.model.Gallery;
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.service.GalleryPhotoService;
+import com.example.photogallery.service.GalleryService;
 import com.example.photogallery.service.PhotoSearchService;
 import com.example.photogallery.service.PhotoService;
 import java.util.List;
@@ -30,46 +33,54 @@ public class GalleryController {
         "withCamera",
         "withDateTaken"
     );
-
+    private final GalleryService galleryService;
+    private final GalleryPhotoService galleryPhotoService;
     private final PhotoService photoService;
     private final PhotoSearchService photoSearchService;
 
     public GalleryController(
         PhotoService photoService,
-        PhotoSearchService photoSearchService
+        PhotoSearchService photoSearchService,
+        GalleryService galleryService,
+        GalleryPhotoService galleryPhotoService
     ) {
         this.photoService = photoService;
         this.photoSearchService = photoSearchService;
+        this.galleryService = galleryService;
+        this.galleryPhotoService = galleryPhotoService;
     }
 
     @GetMapping("/")
-    public String listPhotos(
+    public String listGalleriesRoot(Model model) {
+        // Root: ONLY show galleries; no global photo dump
+        List<Gallery> galleries = galleryService.getRootGalleries();
+
+        model.addAttribute("photos", List.of()); // empty – no global view
+        model.addAttribute("currentSort", "uploadDate");
+        model.addAttribute("searchQuery", null);
+        model.addAttribute("isSearchResult", false);
+        model.addAttribute("galleries", galleries);
+        model.addAttribute("currentGallery", null); // important for template logic
+
+        return "gallery";
+    }
+
+    @GetMapping("/gallery/{id}")
+    public String viewGallery(
+        @PathVariable("id") Long galleryId,
         @RequestParam(name = "sort", defaultValue = "uploadDate") String sort,
-        @RequestParam(name = "search", required = false) String search,
         Model model
     ) {
-        String effectiveSort = ALLOWED_SORTS.contains(sort)
-            ? sort
-            : "uploadDate";
-        boolean isSearch = StringUtils.hasText(search);
-        List<Photo> photos;
-
-        if (isSearch) {
-            // Use the same search pipeline as the REST API; cap page size for UI
-            Pageable pageable = PageRequest.of(0, 200);
-            Page<Photo> page = photoSearchService.searchByText(
-                search,
-                pageable
-            );
-            photos = page.getContent();
-        } else {
-            photos = photoService.getAllPhotosSorted(effectiveSort);
-        }
+        Gallery currentGallery = galleryService.getGallery(galleryId);
+        List<Photo> photos = galleryPhotoService.getPhotosInGallery(galleryId);
+        List<Gallery> galleries = galleryService.getRootGalleries();
 
         model.addAttribute("photos", photos);
-        model.addAttribute("currentSort", effectiveSort);
-        model.addAttribute("searchQuery", search);
-        model.addAttribute("isSearchResult", isSearch);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("searchQuery", null);
+        model.addAttribute("isSearchResult", false);
+        model.addAttribute("galleries", galleries);
+        model.addAttribute("currentGallery", currentGallery);
 
         return "gallery";
     }
@@ -77,8 +88,17 @@ public class GalleryController {
     @PostMapping("/upload")
     public String handleFileUpload(
         @RequestParam("files") MultipartFile[] files,
+        @RequestParam(name = "galleryId") Long galleryId,
         RedirectAttributes redirectAttributes
     ) {
+        if (galleryId == null) {
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "You must select a gallery to upload photos."
+            );
+            return "redirect:/";
+        }
+
         int successCount = 0;
         int duplicateCount = 0;
         int errorCount = 0;
@@ -90,13 +110,21 @@ public class GalleryController {
                 }
 
                 try {
-                    photoService.savePhoto(file);
+                    Photo saved = photoService.savePhoto(file);
                     successCount++;
+
+                    // attach to selected gallery (mandatory now)
+                    try {
+                        galleryPhotoService.addPhotoToGallery(
+                            galleryId,
+                            saved.getId()
+                        );
+                    } catch (RuntimeException linkEx) {
+                        errorCount++;
+                    }
                 } catch (IllegalArgumentException ex) {
-                    // Treat IllegalArgumentException from service as "duplicate" / bad input
                     duplicateCount++;
                 } catch (RuntimeException ex) {
-                    // Catch-all to avoid blowing up the upload page
                     errorCount++;
                 }
             }
@@ -119,7 +147,7 @@ public class GalleryController {
         }
 
         redirectAttributes.addFlashAttribute("message", msg.toString().trim());
-        return "redirect:/";
+        return "redirect:/gallery/" + galleryId;
     }
 
     @DeleteMapping("/photo/{id}/delete")
