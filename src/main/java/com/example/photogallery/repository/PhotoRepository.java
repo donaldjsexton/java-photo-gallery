@@ -1,6 +1,7 @@
 package com.example.photogallery.repository;
 
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.model.Tenant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -12,36 +13,40 @@ import org.springframework.data.repository.query.Param;
 
 public interface PhotoRepository extends JpaRepository<Photo, Long> {
     // --- Dedupe ---
-    Optional<Photo> findByFileHash(String fileHash);
+    Optional<Photo> findByTenantAndFileHash(Tenant tenant, String fileHash);
 
     // --- Sorters (PRD §10) ---
-    List<Photo> findAllByOrderByUploadDateDesc();
-    List<Photo> findAllByOrderByDateTakenDesc();
-    List<Photo> findAllByOrderByDateTakenAsc();
-    List<Photo> findAllByOrderByCameraAsc();
+    List<Photo> findAllByTenantOrderByUploadDateDesc(Tenant tenant);
+    List<Photo> findAllByTenantOrderByDateTakenDesc(Tenant tenant);
+    List<Photo> findAllByTenantOrderByDateTakenAsc(Tenant tenant);
+    List<Photo> findAllByTenantOrderByCameraAsc(Tenant tenant);
 
     // --- Filters (PRD §10) ---
     @Query(
-        "SELECT p FROM Photo p WHERE p.camera IS NOT NULL AND p.camera <> '' ORDER BY p.uploadDate DESC"
+        "SELECT p FROM Photo p WHERE p.tenant = :tenant AND p.camera IS NOT NULL AND p.camera <> '' ORDER BY p.uploadDate DESC"
     )
-    List<Photo> findPhotosWithCamera();
+    List<Photo> findPhotosWithCamera(@Param("tenant") Tenant tenant);
 
     @Query(
-        "SELECT p FROM Photo p WHERE p.dateTaken IS NOT NULL ORDER BY p.uploadDate DESC"
+        "SELECT p FROM Photo p WHERE p.tenant = :tenant AND p.dateTaken IS NOT NULL ORDER BY p.uploadDate DESC"
     )
-    List<Photo> findPhotosWithDateTaken();
+    List<Photo> findPhotosWithDateTaken(@Param("tenant") Tenant tenant);
 
     // --- Text search (case-insensitive across specified fields) ---
     @Query(
         """
         SELECT p FROM Photo p
-        WHERE LOWER(p.originalName)   LIKE LOWER(CONCAT('%', :query, '%'))
+        WHERE p.tenant = :tenant
+          AND (
+            LOWER(p.originalName)   LIKE LOWER(CONCAT('%', :query, '%'))
            OR LOWER(p.camera)         LIKE LOWER(CONCAT('%', :query, '%'))
            OR LOWER(p.allExifData)    LIKE LOWER(CONCAT('%', :query, '%'))
            OR LOWER(p.searchableText) LIKE LOWER(CONCAT('%', :query, '%'))
+          )
         """
     )
     Page<Photo> findByTextSearch(
+        @Param("tenant") Tenant tenant,
         @Param("query") String query,
         Pageable pageable
     );
@@ -50,10 +55,11 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
     @Query(
         """
         SELECT p FROM Photo p
-        WHERE LOWER(p.camera) LIKE LOWER(CONCAT('%', :camera, '%'))
+        WHERE p.tenant = :tenant AND LOWER(p.camera) LIKE LOWER(CONCAT('%', :camera, '%'))
         """
     )
     Page<Photo> findByCameraIgnoreCaseContaining(
+        @Param("tenant") Tenant tenant,
         @Param("camera") String camera,
         Pageable pageable
     );
@@ -62,10 +68,11 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
     @Query(
         """
         SELECT p FROM Photo p
-        WHERE p.dateTakenParsed BETWEEN :start AND :end
+        WHERE p.tenant = :tenant AND p.dateTakenParsed BETWEEN :start AND :end
         """
     )
     Page<Photo> findByDateRange(
+        @Param("tenant") Tenant tenant,
         @Param("start") LocalDate start,
         @Param("end") LocalDate end,
         Pageable pageable
@@ -76,6 +83,7 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
         """
         SELECT p FROM Photo p
         WHERE
+          p.tenant = :tenant AND
           ( :query IS NULL OR
             LOWER(p.originalName)   LIKE LOWER(CONCAT('%', :query, '%')) OR
             LOWER(p.camera)         LIKE LOWER(CONCAT('%', :query, '%')) OR
@@ -87,10 +95,17 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
         """
     )
     Page<Photo> advancedSearch(
+        @Param("tenant") Tenant tenant,
         @Param("query") String query,
         @Param("camera") String camera,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate,
         Pageable pageable
     );
+
+    Page<Photo> findAllByTenant(Tenant tenant, Pageable pageable);
+
+    Optional<Photo> findByIdAndTenant(Long id, Tenant tenant);
+
+    List<Photo> findAllByTenant(Tenant tenant);
 }

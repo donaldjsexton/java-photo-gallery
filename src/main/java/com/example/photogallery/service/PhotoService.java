@@ -1,6 +1,7 @@
 package com.example.photogallery.service;
 
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.model.Tenant;
 import com.example.photogallery.repository.PhotoRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
@@ -28,6 +29,9 @@ public class PhotoService {
 
     @Autowired
     private ExifService exifService;
+
+    @Autowired
+    private TenantService tenantService;
 
     @Value("${photo.gallery.upload.dir}")
     private String uploadDir;
@@ -78,6 +82,7 @@ public class PhotoService {
     @PostConstruct
     public void initializeExistingImages() {
         try {
+            Tenant tenant = resolveTenant();
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 return;
@@ -103,11 +108,16 @@ public class PhotoService {
                     String fileHash = calculateFileHash(fileBytes);
 
                     // Skip if hash already known to DB
-                    if (photoRepository.findByFileHash(fileHash).isPresent()) {
+                    if (
+                        photoRepository
+                            .findByTenantAndFileHash(tenant, fileHash)
+                            .isPresent()
+                    ) {
                         continue;
                     }
 
                     Photo photo = new Photo(
+                        tenant,
                         fileName,
                         fileName,
                         "application/octet-stream",
@@ -134,6 +144,7 @@ public class PhotoService {
 
     @Transactional
     public Photo savePhoto(MultipartFile file, DuplicateHandling handling) {
+        Tenant tenant = resolveTenant();
         String filename = file.getOriginalFilename();
         String contentType = file.getContentType();
 
@@ -157,7 +168,8 @@ public class PhotoService {
 
         String fileHash = calculateFileHash(fileBytes);
 
-        Optional<Photo> existingPhotoOpt = photoRepository.findByFileHash(
+        Optional<Photo> existingPhotoOpt = photoRepository.findByTenantAndFileHash(
+            tenant,
             fileHash
         );
         if (existingPhotoOpt.isPresent()) {
@@ -208,6 +220,7 @@ public class PhotoService {
         }
 
         Photo photo = new Photo(
+            tenant,
             filename,
             fileName,
             contentType,
@@ -231,8 +244,9 @@ public class PhotoService {
     // ---------------------------------------------------------
     @Transactional
     public Photo updatePhoto(Long id, MultipartFile file) {
+        Tenant tenant = resolveTenant();
         Photo existingPhoto = photoRepository
-            .findById(id)
+            .findByIdAndTenant(id, tenant)
             .orElseThrow(() ->
                 new NoSuchElementException("Photo not found with id " + id)
             );
@@ -266,9 +280,8 @@ public class PhotoService {
         }
 
         // New file already used by another photo → 400
-        Optional<Photo> duplicatePhoto = photoRepository.findByFileHash(
-            newFileHash
-        );
+        Optional<Photo> duplicatePhoto =
+            photoRepository.findByTenantAndFileHash(tenant, newFileHash);
         if (
             duplicatePhoto.isPresent() &&
             !duplicatePhoto.get().getId().equals(id)
@@ -313,30 +326,38 @@ public class PhotoService {
     // Queries
     // ---------------------------------------------------------
     public List<Photo> getAllPhotos() {
-        return photoRepository.findAll();
+        return photoRepository.findAllByTenant(resolveTenant());
     }
 
     public List<Photo> getAllPhotosSorted(String sortBy) {
+        Tenant tenant = resolveTenant();
         switch (sortBy) {
             case "dateTaken":
-                return photoRepository.findAllByOrderByDateTakenDesc();
+                return photoRepository.findAllByTenantOrderByDateTakenDesc(
+                    tenant
+                );
             case "dateTakenAsc":
-                return photoRepository.findAllByOrderByDateTakenAsc();
+                return photoRepository.findAllByTenantOrderByDateTakenAsc(
+                    tenant
+                );
             case "camera":
-                return photoRepository.findAllByOrderByCameraAsc();
+                return photoRepository.findAllByTenantOrderByCameraAsc(tenant);
             case "uploadDate":
-                return photoRepository.findAllByOrderByUploadDateDesc();
+                return photoRepository.findAllByTenantOrderByUploadDateDesc(
+                    tenant
+                );
             case "withCamera":
-                return photoRepository.findPhotosWithCamera();
+                return photoRepository.findPhotosWithCamera(tenant);
             case "withDateTaken":
-                return photoRepository.findPhotosWithDateTaken();
+                return photoRepository.findPhotosWithDateTaken(tenant);
             default:
-                return photoRepository.findAll();
+                return photoRepository.findAllByTenant(tenant);
         }
     }
 
     public Photo getPhotoById(Long id) {
-        return photoRepository.findById(id).orElse(null);
+        Tenant tenant = resolveTenant();
+        return photoRepository.findByIdAndTenant(id, tenant).orElse(null);
     }
 
     // ---------------------------------------------------------
@@ -344,8 +365,9 @@ public class PhotoService {
     // ---------------------------------------------------------
     @Transactional
     public void deletePhoto(Long id) {
+        Tenant tenant = resolveTenant();
         Photo p = photoRepository
-            .findById(id)
+            .findByIdAndTenant(id, tenant)
             .orElseThrow(() ->
                 new NoSuchElementException("Photo not found with id " + id)
             );
@@ -371,5 +393,9 @@ public class PhotoService {
         if (".jpeg".equals(ext)) return ".jpg";
         if (".tif".equals(ext)) return ".tiff";
         return ext;
+    }
+
+    private Tenant resolveTenant() {
+        return tenantService.getDefaultTenant();
     }
 }

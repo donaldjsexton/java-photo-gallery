@@ -2,6 +2,8 @@ package com.example.photogallery.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -18,6 +20,9 @@ public class User {
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private Set<Membership> memberships = new HashSet<>();
+
     public User() {}
     public User(String email, String passwordHash) {
         this.email = email;
@@ -31,5 +36,7 @@ public class User {
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Set<Membership> getMemberships() { return memberships; }
+    public void setMemberships(Set<Membership> memberships) { this.memberships = memberships; }
 
 }

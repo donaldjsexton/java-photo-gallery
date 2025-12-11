@@ -4,7 +4,9 @@ import com.example.photogallery.model.Gallery;
 import com.example.photogallery.model.Photo;
 import com.example.photogallery.service.GalleryPhotoService;
 import com.example.photogallery.service.GalleryService;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,38 +28,49 @@ public class GalleryRestController {
 
     // POST /api/galleries?title=...&description=...&parentId=...
     @PostMapping
-    public ResponseEntity<Gallery> createGallery(
+    public ResponseEntity<GalleryDto> createGallery(
         @RequestParam("title") String title,
         @RequestParam(
             value = "description",
             required = false
         ) String description,
-        @RequestParam(value = "parentId", required = false) Long parentId
+        @RequestParam(value = "parentId", required = false) Long parentId,
+        @RequestParam(value = "albumId", required = false) Long albumId
     ) {
         Gallery gallery;
         if (parentId == null) {
-            gallery = galleryService.createRootGallery(title, description);
+            if (albumId == null) {
+                gallery = galleryService.createRootGallery(title, description);
+            } else {
+                gallery =
+                    galleryService.createRootGalleryInAlbum(
+                        albumId,
+                        title,
+                        description
+                    );
+            }
         } else {
             gallery = galleryService.createChildGallery(
                 parentId,
                 title,
-                description
+                description,
+                albumId
             );
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(gallery);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(gallery));
     }
 
     // GET /api/galleries/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<Gallery> getGallery(@PathVariable Long id) {
+    public ResponseEntity<GalleryDto> getGallery(@PathVariable Long id) {
         Gallery g = galleryService.getGallery(id);
-        return ResponseEntity.ok(g);
+        return ResponseEntity.ok(toDto(g));
     }
 
     // GET /api/galleries          -> root galleries
     // GET /api/galleries?parentId -> children of that parent
     @GetMapping
-    public ResponseEntity<List<Gallery>> listGalleries(
+    public ResponseEntity<List<GalleryDto>> listGalleries(
         @RequestParam(value = "parentId", required = false) Long parentId
     ) {
         List<Gallery> results;
@@ -66,12 +79,14 @@ public class GalleryRestController {
         } else {
             results = galleryService.getChildren(parentId);
         }
-        return ResponseEntity.ok(results);
+        return ResponseEntity.ok(
+            results.stream().map(this::toDto).collect(Collectors.toList())
+        );
     }
 
     // PUT /api/galleries/{id}?title=...&description=...&visibility=...
     @PutMapping("/{id}")
-    public ResponseEntity<Gallery> updateGallery(
+    public ResponseEntity<GalleryDto> updateGallery(
         @PathVariable Long id,
         @RequestParam(value = "title", required = false) String title,
         @RequestParam(
@@ -86,7 +101,7 @@ public class GalleryRestController {
             description,
             visibility
         );
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(toDto(updated));
     }
 
     // DELETE /api/galleries/{id}
@@ -142,4 +157,28 @@ public class GalleryRestController {
         galleryPhotoService.reorderPhotos(id, orderedPhotoIds);
         return ResponseEntity.noContent().build();
     }
+
+    private GalleryDto toDto(Gallery g) {
+        return new GalleryDto(
+            g.getId(),
+            g.getTitle(),
+            g.getDescription(),
+            g.getVisibility(),
+            g.getParent() != null ? g.getParent().getId() : null,
+            g.getAlbum() != null ? g.getAlbum().getId() : null,
+            g.getCreatedAt(),
+            g.getUpdatedAt()
+        );
+    }
+
+    public record GalleryDto(
+        Long id,
+        String title,
+        String description,
+        String visibility,
+        Long parentId,
+        Long albumId,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+    ) {}
 }

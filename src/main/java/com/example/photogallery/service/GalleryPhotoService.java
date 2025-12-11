@@ -3,6 +3,7 @@ package com.example.photogallery.service;
 import com.example.photogallery.model.Gallery;
 import com.example.photogallery.model.GalleryPhoto;
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.model.Tenant;
 import com.example.photogallery.repository.GalleryPhotoRepository;
 import com.example.photogallery.repository.GalleryRepository;
 import com.example.photogallery.repository.PhotoRepository;
@@ -25,6 +26,9 @@ public class GalleryPhotoService {
     @Autowired
     private GalleryPhotoRepository galleryPhotoRepository;
 
+    @Autowired
+    private TenantService tenantService;
+
     // ---- Add photo to gallery ----
 
     @Transactional
@@ -33,12 +37,13 @@ public class GalleryPhotoService {
         Long photoId,
         Integer sortOrder
     ) {
+        Tenant tenant = tenantService.getDefaultTenant();
         Gallery gallery = galleryRepository
-            .findById(galleryId)
+            .findByIdAndTenant(galleryId, tenant)
             .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
 
         Photo photo = photoRepository
-            .findById(photoId)
+            .findByIdAndTenant(photoId, tenant)
             .orElseThrow(() -> new NoSuchElementException("Photo not found"));
 
         // If already there, just return existing mapping
@@ -46,6 +51,7 @@ public class GalleryPhotoService {
             .findByGalleryAndPhoto(gallery, photo)
             .orElseGet(() -> {
                 GalleryPhoto gp = new GalleryPhoto();
+                gp.setTenant(tenant);
                 gp.setGallery(gallery);
                 gp.setPhoto(photo);
                 gp.setSortOrder(sortOrder);
@@ -63,12 +69,13 @@ public class GalleryPhotoService {
 
     @Transactional
     public void removePhotoFromGallery(Long galleryId, Long photoId) {
+        Tenant tenant = tenantService.getDefaultTenant();
         Gallery gallery = galleryRepository
-            .findById(galleryId)
+            .findByIdAndTenant(galleryId, tenant)
             .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
 
         Photo photo = photoRepository
-            .findById(photoId)
+            .findByIdAndTenant(photoId, tenant)
             .orElseThrow(() -> new NoSuchElementException("Photo not found"));
 
         galleryPhotoRepository.deleteByGalleryAndPhoto(gallery, photo);
@@ -79,7 +86,10 @@ public class GalleryPhotoService {
     @Transactional
     public List<Photo> getPhotosInGallery(Long galleryId) {
         return galleryPhotoRepository
-            .findByGalleryIdOrderBySortOrderAscAddedAtAsc(galleryId)
+            .findByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc(
+                galleryId,
+                tenantService.getDefaultTenant()
+            )
             .stream()
             .map(GalleryPhoto::getPhoto)
             .collect(Collectors.toList());
@@ -90,8 +100,9 @@ public class GalleryPhotoService {
 
     @Transactional
     public void reorderPhotos(Long galleryId, List<Long> orderedPhotoIds) {
+        Tenant tenant = tenantService.getDefaultTenant();
         Gallery gallery = galleryRepository
-            .findById(galleryId)
+            .findByIdAndTenant(galleryId, tenant)
             .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
 
         List<GalleryPhoto> mappings =

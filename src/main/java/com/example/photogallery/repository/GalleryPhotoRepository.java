@@ -3,6 +3,7 @@ package com.example.photogallery.repository;
 import com.example.photogallery.model.Gallery;
 import com.example.photogallery.model.GalleryPhoto;
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.model.Tenant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,8 +14,9 @@ public interface GalleryPhotoRepository
         Gallery gallery
     );
 
-    List<GalleryPhoto> findByGalleryIdOrderBySortOrderAscAddedAtAsc(
-        Long galleryId
+    List<GalleryPhoto> findByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc(
+        Long galleryId,
+        Tenant tenant
     );
 
     Optional<GalleryPhoto> findByGalleryAndPhoto(Gallery gallery, Photo photo);

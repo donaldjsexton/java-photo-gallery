@@ -2,18 +2,14 @@ package com.example.photogallery.controller;
 
 import com.example.photogallery.model.Gallery;
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.service.AlbumService;
+import com.example.photogallery.service.CategoryService;
 import com.example.photogallery.service.GalleryPhotoService;
 import com.example.photogallery.service.GalleryService;
-import com.example.photogallery.service.PhotoSearchService;
 import com.example.photogallery.service.PhotoService;
 import java.util.List;
-import java.util.Set;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,35 +21,32 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class GalleryController {
 
-    private static final Set<String> ALLOWED_SORTS = Set.of(
-        "uploadDate",
-        "dateTaken",
-        "dateTakenAsc",
-        "camera",
-        "withCamera",
-        "withDateTaken"
-    );
     private final GalleryService galleryService;
     private final GalleryPhotoService galleryPhotoService;
     private final PhotoService photoService;
-    private final PhotoSearchService photoSearchService;
+    private final CategoryService categoryService;
+    private final AlbumService albumService;
 
     public GalleryController(
         PhotoService photoService,
-        PhotoSearchService photoSearchService,
         GalleryService galleryService,
-        GalleryPhotoService galleryPhotoService
+        GalleryPhotoService galleryPhotoService,
+        CategoryService categoryService,
+        AlbumService albumService
     ) {
         this.photoService = photoService;
-        this.photoSearchService = photoSearchService;
         this.galleryService = galleryService;
         this.galleryPhotoService = galleryPhotoService;
+        this.categoryService = categoryService;
+        this.albumService = albumService;
     }
 
     @GetMapping("/")
     public String listGalleriesRoot(Model model) {
         // Root: ONLY show galleries; no global photo dump
         List<Gallery> galleries = galleryService.getRootGalleries();
+        model.addAttribute("categories", categoryService.listForCurrentTenant());
+        model.addAttribute("albums", albumService.listForCurrentTenant());
 
         model.addAttribute("photos", List.of()); // empty – no global view
         model.addAttribute("currentSort", "uploadDate");
@@ -61,6 +54,7 @@ public class GalleryController {
         model.addAttribute("isSearchResult", false);
         model.addAttribute("galleries", galleries);
         model.addAttribute("currentGallery", null); // important for template logic
+        model.addAttribute("currentAlbum", null);
 
         return "gallery";
     }
@@ -74,6 +68,8 @@ public class GalleryController {
         Gallery currentGallery = galleryService.getGallery(galleryId);
         List<Photo> photos = galleryPhotoService.getPhotosInGallery(galleryId);
         List<Gallery> galleries = galleryService.getRootGalleries();
+        model.addAttribute("categories", categoryService.listForCurrentTenant());
+        model.addAttribute("albums", albumService.listForCurrentTenant());
 
         model.addAttribute("photos", photos);
         model.addAttribute("currentSort", sort);
@@ -81,6 +77,7 @@ public class GalleryController {
         model.addAttribute("isSearchResult", false);
         model.addAttribute("galleries", galleries);
         model.addAttribute("currentGallery", currentGallery);
+        model.addAttribute("currentAlbum", currentGallery.getAlbum());
 
         return "gallery";
     }
@@ -165,5 +162,90 @@ public class GalleryController {
             );
         }
         return "redirect:/";
+    }
+
+    @PostMapping("/categories")
+    public String createCategory(
+        @RequestParam("name") String name,
+        @RequestParam(value = "description", required = false) String description,
+        RedirectAttributes redirectAttributes
+    ) {
+        try {
+            categoryService.create(name, description);
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Category created."
+            );
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Failed to create category: " + ex.getMessage()
+            );
+        }
+        return "redirect:/";
+    }
+
+    @PostMapping("/albums")
+    public String createAlbum(
+        @RequestParam("name") String name,
+        @RequestParam(value = "description", required = false) String description,
+        @RequestParam(value = "categoryId", required = false) Long categoryId,
+        RedirectAttributes redirectAttributes
+    ) {
+        try {
+            var category = categoryId != null
+                ? categoryService.getById(categoryId)
+                : categoryService.getOrCreateDefaultCategory();
+            albumService.create(category, name, description);
+            redirectAttributes.addFlashAttribute("message", "Album created.");
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Failed to create album: " + ex.getMessage()
+            );
+        }
+        return "redirect:/";
+    }
+
+    @PostMapping("/galleries")
+    public String createGallery(
+        @RequestParam("title") String title,
+        @RequestParam(value = "description", required = false) String description,
+        @RequestParam(value = "albumId", required = false) Long albumId,
+        @RequestParam(value = "parentId", required = false) Long parentId,
+        RedirectAttributes redirectAttributes
+    ) {
+        try {
+            Gallery created;
+            if (parentId != null) {
+                created =
+                    galleryService.createChildGallery(
+                        parentId,
+                        title,
+                        description,
+                        albumId
+                    );
+            } else if (albumId != null) {
+                created =
+                    galleryService.createRootGalleryInAlbum(
+                        albumId,
+                        title,
+                        description
+                    );
+            } else {
+                created = galleryService.createRootGallery(title, description);
+            }
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Gallery created: #" + created.getId()
+            );
+            return "redirect:/gallery/" + created.getId();
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Failed to create gallery: " + ex.getMessage()
+            );
+            return "redirect:/";
+        }
     }
 }

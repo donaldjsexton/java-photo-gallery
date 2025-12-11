@@ -7,7 +7,9 @@ import java.time.LocalDateTime;
 @Table(
     name = "gallery_photos",
     uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "gallery_id", "photo_id" }),
+        @UniqueConstraint(
+            columnNames = { "tenant_id", "gallery_id", "photo_id" }
+        ),
     }
 )
 public class GalleryPhoto {
@@ -15,6 +17,10 @@ public class GalleryPhoto {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
 
     // which gallery this mapping belongs to
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -39,6 +45,14 @@ public class GalleryPhoto {
 
     public Long getId() {
         return id;
+    }
+
+    public Tenant getTenant() {
+        return tenant;
+    }
+
+    public void setTenant(Tenant tenant) {
+        this.tenant = tenant;
     }
 
     public void setId(Long id) {

@@ -12,6 +12,10 @@ public class Photo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
+
     private String originalName;
     private String fileName;
     private String contentType;
@@ -51,12 +55,14 @@ public class Photo {
     public Photo() {}
 
     public Photo(
+        Tenant tenant,
         String originalName,
         String fileName,
         String contentType,
         Long size,
         String fileHash
     ) {
+        this.tenant = tenant;
         this.originalName = originalName;
         this.fileName = fileName;
         this.contentType = contentType;
@@ -67,6 +73,14 @@ public class Photo {
 
     public Long getId() {
         return id;
+    }
+
+    public Tenant getTenant() {
+        return tenant;
+    }
+
+    public void setTenant(Tenant tenant) {
+        this.tenant = tenant;
     }
 
     public void setId(Long id) {

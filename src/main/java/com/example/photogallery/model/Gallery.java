@@ -17,6 +17,14 @@ public class Gallery {
     @JoinColumn(name = "parent_id")
     private Gallery parent;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "album_id", nullable = false)
+    private Album album;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
+
     @OneToMany(mappedBy = "parent")
     private List<Gallery> children = new ArrayList<>();
 
@@ -57,6 +65,22 @@ public class Gallery {
 
     public void setParent(Gallery parent) {
         this.parent = parent;
+    }
+
+    public Album getAlbum() {
+        return album;
+    }
+
+    public void setAlbum(Album album) {
+        this.album = album;
+    }
+
+    public Tenant getTenant() {
+        return tenant;
+    }
+
+    public void setTenant(Tenant tenant) {
+        this.tenant = tenant;
     }
 
     public List<Gallery> getChildren() {

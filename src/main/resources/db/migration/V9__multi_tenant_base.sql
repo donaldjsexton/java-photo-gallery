@@ -2,14 +2,14 @@ CREATE TABLE tenants (
     id BIGSERIAL PRIMARY KEY,
     slug VARCHAR(64) NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMPZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMPZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TYPE membership_role AS ENUM ('OWNER','ADMIN','EDITOR','VIEWER');
@@ -19,18 +19,32 @@ CREATE TABLE memberships (
     tenant_id BIGINT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role membership_role NOT NULL,
-    created_at TIMESTAMPZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (tenant_id, user_id)
 );
 
-- Add tenant to existing tables (backfill with a default tenant id if needed)
+-- Add tenant to existing tables (backfill with a default tenant id if needed)
 ALTER TABLE photos ADD COLUMN IF NOT EXISTS tenant_id BIGINT;
 ALTER TABLE galleries ADD COLUMN IF NOT EXISTS tenant_id BIGINT;
 ALTER TABLE gallery_photos ADD COLUMN IF NOT EXISTS tenant_id BIGINT;
 ALTER TABLE share_tokens ADD COLUMN IF NOT EXISTS tenant_id BIGINT;
 
--- TODO: run an UPDATE to set tenant_id to your default tenant before NOT NULL
--- UPDATE photos SET tenant_id = 1 WHERE tenant_id IS NULL; (repeat for others)
+-- Seed a default tenant and backfill existing rows before NOT NULL
+INSERT INTO tenants (slug, name)
+VALUES ('default', 'Default Tenant')
+ON CONFLICT (slug) DO NOTHING;
+
+WITH t AS (SELECT id FROM tenants WHERE slug = 'default' LIMIT 1)
+UPDATE photos SET tenant_id = (SELECT id FROM t) WHERE tenant_id IS NULL;
+
+WITH t AS (SELECT id FROM tenants WHERE slug = 'default' LIMIT 1)
+UPDATE galleries SET tenant_id = (SELECT id FROM t) WHERE tenant_id IS NULL;
+
+WITH t AS (SELECT id FROM tenants WHERE slug = 'default' LIMIT 1)
+UPDATE gallery_photos SET tenant_id = (SELECT id FROM t) WHERE tenant_id IS NULL;
+
+WITH t AS (SELECT id FROM tenants WHERE slug = 'default' LIMIT 1)
+UPDATE share_tokens SET tenant_id = (SELECT id FROM t) WHERE tenant_id IS NULL;
 
 ALTER TABLE photos ALTER COLUMN tenant_id SET NOT NULL;
 ALTER TABLE galleries ALTER COLUMN tenant_id SET NOT NULL;

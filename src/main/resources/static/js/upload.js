@@ -1,9 +1,14 @@
-document.getElementById("fileInput").addEventListener("change", function (e) {
-  const files = Array.from(e.target.files);
-  const mode = document.getElementById("duplicateMode").value;
+const fileInput = document.getElementById("fileInput");
+const duplicateModeSelect = document.getElementById("duplicateMode");
 
-  files.forEach((file) => uploadFile(file, mode));
-});
+if (fileInput && duplicateModeSelect) {
+  fileInput.addEventListener("change", function (e) {
+    const files = Array.from(e.target.files);
+    const mode = duplicateModeSelect.value;
+
+    files.forEach((file) => uploadFile(file, mode));
+  });
+}
 
 async function uploadFile(file, mode) {
   const formData = new FormData();
