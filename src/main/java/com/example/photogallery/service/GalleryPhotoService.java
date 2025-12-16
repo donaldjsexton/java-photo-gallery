@@ -29,6 +29,25 @@ public class GalleryPhotoService {
     @Autowired
     private TenantService tenantService;
 
+    public Photo getThumbnailPhotoForGallery(Long galleryId) {
+        Tenant tenant = tenantService.getDefaultTenant();
+        Gallery gallery = galleryRepository
+            .findByIdAndTenant(galleryId, tenant)
+            .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
+
+        if (gallery.getCoverPhoto() != null) {
+            return gallery.getCoverPhoto();
+        }
+
+        return galleryPhotoRepository
+            .findFirstByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc(
+                galleryId,
+                tenant
+            )
+            .map(GalleryPhoto::getPhoto)
+            .orElse(null);
+    }
+
     // ---- Add photo to gallery ----
 
     @Transactional

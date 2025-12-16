@@ -1,338 +1,528 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Heroui Gallery Studio</title>
-    <link rel="stylesheet" th:href="@{/css/style.css}" />
-</head>
-<body class="page">
-    <div class="bg-mesh"></div>
-    <div class="shell">
-        <header class="hero">
-            <div class="hero-left">
-                <p class="tag">Heroui workspace</p>
-                <h1>Photo gallery control room</h1>
-                <p class="lede">
-                    Structured for hierarchy-first curation: Categories → Albums → Galleries → Photos.
-                    Keep everything polished while you build and publish.
-                </p>
-                <div class="metrics">
-                    <div class="metric">
-                        <span>Categories</span>
-                        <strong th:text="${categories != null ? #lists.size(categories) : 0}"></strong>
-                    </div>
-                    <div class="metric">
-                        <span>Albums</span>
-                        <strong th:text="${albums != null ? #lists.size(albums) : 0}"></strong>
-                    </div>
-                    <div class="metric">
-                        <span>Galleries</span>
-                        <strong th:text="${galleries != null ? #lists.size(galleries) : 0}"></strong>
-                    </div>
-                    <div class="metric">
-                        <span>Photos</span>
-                        <strong th:text="${photos != null ? photos.size() : 0}"></strong>
-                    </div>
-                </div>
-                <div class="path">
-                    <span class="crumb">Hierarchy active</span>
-                    <span class="crumb accent" th:text="${currentGallery != null ? currentGallery.title : 'No gallery selected'}"></span>
-                    <span class="crumb" th:text="${currentAlbum != null ? currentAlbum.name : 'Album pending'}"></span>
-                    <span class="crumb muted">Studio-grade layout</span>
-                </div>
-            </div>
-            <div class="hero-card glass">
-                <div class="card-top">
-                    <p class="eyebrow">Current gallery</p>
-                    <span class="pill ghost" th:text="${currentGallery != null ? '#' + currentGallery.id : 'Awaiting selection'}"></span>
-                </div>
-                <h3 class="hero-title" th:text="${currentGallery != null ? currentGallery.title : 'Choose a gallery to work with'}"></h3>
-                <p class="muted" th:if="${currentGallery != null and currentGallery.description != null}" th:text="${currentGallery.description}"></p>
-                <div class="hero-badges">
-                    <span class="chip" th:text="${currentAlbum != null ? currentAlbum.name : 'No album'}"></span>
-                    <span class="chip ghost" th:text="${currentSort != null ? 'Sort: ' + currentSort : 'Latest uploaded'}"></span>
-                    <span class="chip accent" th:text="${currentGallery != null ? 'Photos: ' + (photos != null ? photos.size() : 0) : 'Idle workspace'}"></span>
-                </div>
-                <div class="divider"></div>
-                <div class="hero-footer">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Heroui Gallery Studio</title>
+        <link rel="stylesheet" th:href="@{/css/style.css}" />
+    </head>
+    <body class="page">
+        <div class="bg-mesh"></div>
+        <div class="shell">
+            <section class="flow" th:if="${flowMode}">
+                <div class="flow-head">
                     <div>
-                        <p class="muted small">Hierarchy aware</p>
-                        <p class="strong small">Categories → Albums → Galleries → Photos</p>
+                        <p class="eyebrow">Getting started</p>
+                        <h2>Create a new album</h2>
+                        <p class="muted small">
+                            We’ll guide you through a quick setup.
+                        </p>
                     </div>
-                    <div class="stack">
-                        <p class="muted small">Keep uploads aligned to the hierarchy and preview instantly.</p>
-                    </div>
+                    <span class="pill ghost">Quick setup</span>
                 </div>
-            </div>
-        </header>
-
-        <section class="flow">
-            <div class="flow-head">
-                <div>
-                    <p class="eyebrow">Flow state</p>
-                    <h2>Step through the hierarchy</h2>
-                    <p class="muted small">Move left to right: each card is a step in building a polished gallery.</p>
-                </div>
-                <span class="pill ghost">Hierarchy-first workflow</span>
-            </div>
-            <div class="flow-steps">
-                <div class="flow-card"
-                     th:classappend="${categories != null and !categories.isEmpty()} ? ' done' : ' pending'">
-                    <span class="dot"></span>
-                    <div class="flow-meta">
-                        <p class="eyebrow">Step 1</p>
-                        <h3>Define categories</h3>
-                        <p class="muted small">Name the spaces where albums will live.</p>
-                    </div>
-                    <span class="pill ghost" th:text="${categories != null ? #lists.size(categories) : 0} + ' saved'"></span>
-                </div>
-                <div class="flow-card"
-                     th:classappend="${albums != null and !albums.isEmpty()} ? ' done' : ' pending'">
-                    <span class="dot"></span>
-                    <div class="flow-meta">
-                        <p class="eyebrow">Step 2</p>
-                        <h3>Build albums</h3>
-                        <p class="muted small">Organize galleries by client or theme.</p>
-                    </div>
-                    <span class="pill ghost" th:text="${albums != null ? #lists.size(albums) : 0} + ' ready'"></span>
-                </div>
-                <div class="flow-card"
-                     th:classappend="${galleries != null and !galleries.isEmpty()} ? ' done' : ' pending'">
-                    <span class="dot"></span>
-                    <div class="flow-meta">
-                        <p class="eyebrow">Step 3</p>
-                        <h3>Create galleries</h3>
-                        <p class="muted small">Attach to albums and wire up parents.</p>
-                    </div>
-                    <span class="pill ghost" th:text="${galleries != null ? #lists.size(galleries) : 0} + ' in play'"></span>
-                </div>
-                <div class="flow-card"
-                     th:classappend="${currentGallery != null} ? ' active' : ' pending'">
-                    <span class="dot"></span>
-                    <div class="flow-meta">
-                        <p class="eyebrow">Step 4</p>
-                        <h3>Upload assets</h3>
-                        <p class="muted small" th:text="${currentGallery != null ? 'Uploading to ' + currentGallery.title : 'Select a gallery to upload'}"></p>
-                    </div>
-                    <span class="pill ghost" th:text="${currentGallery != null ? 'Gallery #' + currentGallery.id : 'Awaiting selection'}"></span>
-                </div>
-                <div class="flow-card"
-                     th:classappend="${photos != null and photos.size() > 0} ? ' done' : ' pending'">
-                    <span class="dot"></span>
-                    <div class="flow-meta">
-                        <p class="eyebrow">Step 5</p>
-                        <h3>Curate &amp; publish</h3>
-                        <p class="muted small">Sort, refine, and share confidently.</p>
-                    </div>
-                    <span class="pill ghost" th:text="${photos != null ? photos.size() + ' assets' : '0 assets'}"></span>
-                </div>
-            </div>
-        </section>
-
-        <main class="workbench">
-            <section class="column">
-                <article class="card">
-                    <div class="card-head">
-                        <div>
-                            <p class="eyebrow">Hierarchy</p>
-                            <h2>Categories</h2>
+                <div class="flow-steps">
+                    <div
+                        class="flow-card"
+                        th:classappend="${flowStep > 1} ? ' done' : (${flowStep == 1} ? ' active' : ' pending')"
+                    >
+                        <span class="dot"></span>
+                        <div class="flow-meta">
+                            <p class="eyebrow">Step 1</p>
+                            <h3>Choose a category</h3>
+                            <p class="muted small">
+                                Pick where this album should live.
+                            </p>
                         </div>
-                        <span class="pill ghost" th:text="${categories != null ? #lists.size(categories) : 0} + ' total'"></span>
+                        <span
+                            class="pill ghost"
+                            th:text="${currentCategory != null ? currentCategory.name : 'Choose one'}"
+                        ></span>
                     </div>
-                    <div class="list" th:if="${categories != null and !categories.isEmpty()}">
-                        <div class="list-row" th:each="c : ${categories}">
-                            <div>
-                                <div class="strong" th:text="${c.name}"></div>
-                                <div class="muted small" th:text="${c.description}"></div>
-                            </div>
-                            <span class="chip ghost">Category</span>
+                    <div
+                        class="flow-card"
+                        th:classappend="${flowStep > 2} ? ' done' : (${flowStep == 2} ? ' active' : ' pending')"
+                    >
+                        <span class="dot"></span>
+                        <div class="flow-meta">
+                            <p class="eyebrow">Step 2</p>
+                            <h3>Name your album</h3>
+                            <p class="muted small">
+                                Use your client or event name.
+                            </p>
                         </div>
+                        <span
+                            class="pill ghost"
+                            th:text="${currentAlbum != null ? currentAlbum.name : 'Not named yet'}"
+                        ></span>
                     </div>
-                    <div class="muted small" th:if="${categories == null or categories.isEmpty()}">No categories yet.</div>
-                    <form class="form inline" th:action="@{/categories}" method="post">
-                        <input type="text" name="name" placeholder="New category" required />
-                        <input type="text" name="description" placeholder="Description (optional)" />
-                        <button type="submit">Add</button>
-                    </form>
-                </article>
-
-                <article class="card">
-                    <div class="card-head">
-                        <div>
-                            <p class="eyebrow">Collections</p>
-                            <h2>Albums</h2>
+                    <div
+                        class="flow-card"
+                        th:classappend="${flowStep > 3} ? ' done' : (${flowStep == 3} ? ' active' : ' pending')"
+                    >
+                        <span class="dot"></span>
+                        <div class="flow-meta">
+                            <p class="eyebrow">Step 3</p>
+                            <h3>Create your gallery</h3>
+                            <p class="muted small">
+                                Add the first gallery inside this album.
+                            </p>
                         </div>
-                        <span class="pill ghost" th:text="${albums != null ? #lists.size(albums) : 0} + ' total'"></span>
+                        <span
+                            class="pill ghost"
+                            th:text="${currentGallery != null ? currentGallery.title : 'Almost there'}"
+                        ></span>
                     </div>
-                    <div class="list" th:if="${albums != null and !albums.isEmpty()}">
-                        <div class="list-row" th:each="a : ${albums}">
-                            <div>
-                                <div class="strong" th:text="${a.name}"></div>
-                                <div class="muted small" th:text="${a.description}"></div>
-                            </div>
-                            <span class="chip ghost" th:text="${#lists.size(a.galleries)} + ' galleries'"></span>
+                    <div
+                        class="flow-card"
+                        th:classappend="${flowStep == 4} ? ' active' : ' pending'"
+                    >
+                        <span class="dot"></span>
+                        <div class="flow-meta">
+                            <p class="eyebrow">Step 4</p>
+                            <h3>Add photos</h3>
+                            <p
+                                class="muted small"
+                                th:text="${currentGallery != null ? 'Uploading to ' + currentGallery.title : 'Waiting for a gallery'}"
+                            ></p>
                         </div>
+                        <span
+                            class="pill ghost"
+                            th:text="${currentGallery != null ? 'Gallery #' + currentGallery.id : 'Ready when you are'}"
+                        ></span>
                     </div>
-                    <div class="muted small" th:if="${albums == null or albums.isEmpty()}">No albums yet.</div>
-                    <form class="form inline" th:action="@{/albums}" method="post">
-                        <input type="text" name="name" placeholder="New album" required />
-                        <input type="text" name="description" placeholder="Description (optional)" />
-                        <select name="categoryId">
-                            <option value="">Category</option>
-                            <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}"></option>
-                        </select>
-                        <button type="submit">Add</button>
-                    </form>
-                </article>
+                </div>
             </section>
 
-            <section class="column main">
-                <article class="card">
-                    <div class="card-head">
-                        <div>
-                            <p class="eyebrow">Builder</p>
-                            <h2>Galleries</h2>
+            <main class="workbench" th:if="${flowMode}">
+                <section class="column main">
+                    <article class="card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Wizard</p>
+                                <h2 th:text="${'Step ' + flowStep}"></h2>
+                            </div>
                         </div>
-                        <span class="pill ghost" th:if="${currentGallery != null}" th:text="'Active #' + ${currentGallery.id}"></span>
-                    </div>
-                    <div class="chip-cloud" th:if="${galleries != null and !galleries.isEmpty()}">
-                        <a class="chip clickable"
-                           th:each="g : ${galleries}"
-                           th:href="@{/gallery/{id}(id=${g.id})}"
-                           th:text="${g.title}"></a>
-                    </div>
-                    <div class="muted small" th:if="${galleries == null or galleries.isEmpty()}">No galleries yet.</div>
-                </article>
 
-                <article class="card">
-                    <div class="card-head">
-                        <div>
-                            <p class="eyebrow">Create</p>
-                            <h2>New gallery</h2>
-                        </div>
-                        <p class="muted small">Attach to an album and optional parent gallery to keep hierarchy tight.</p>
-                    </div>
-                    <form class="form stacked" th:action="@{/galleries}" method="post">
-                        <div class="form-grid">
-                            <label>
-                                <span>Title</span>
-                                <input type="text" name="title" placeholder="Gallery title" required />
-                            </label>
-                            <label>
-                                <span>Album</span>
-                                <select name="albumId">
-                                    <option value="">Default</option>
-                                    <option th:each="a : ${albums}" th:value="${a.id}" th:text="${a.name}"></option>
-                                </select>
-                            </label>
-                            <label>
-                                <span>Parent gallery</span>
-                                <input type="number" name="parentId" placeholder="ID (optional)" />
-                            </label>
-                            <label class="wide">
-                                <span>Description</span>
-                                <input type="text" name="description" placeholder="What makes this gallery special?" />
-                            </label>
-                        </div>
-                        <div class="actions">
-                            <button type="submit">Create gallery</button>
-                        </div>
-                    </form>
-                </article>
-
-                <article class="card" th:if="${currentGallery != null}">
-                    <div class="card-head align-end">
-                        <div>
-                            <p class="eyebrow">Curation</p>
-                            <h2 th:text="${currentGallery.title}"></h2>
-                            <div class="muted small" th:text="${currentAlbum != null ? currentAlbum.name : 'No album'}"></div>
-                        </div>
-                        <div class="sorter">
-                            <label class="muted small">Sort</label>
-                            <select
-                                onchange="
-                                    const baseUrl = /*[[${'/gallery/' + currentGallery.id + '?sort='}]]*/ '';
-                                    if (baseUrl) { window.location.href = baseUrl + this.value; }
-                                ">
-                                <option value="uploadDate" th:selected="${currentSort == 'uploadDate'}">Latest uploaded</option>
-                                <option value="dateTaken" th:selected="${currentSort == 'dateTaken'}">Date taken (newest)</option>
-                                <option value="dateTakenAsc" th:selected="${currentSort == 'dateTakenAsc'}">Date taken (oldest)</option>
-                                <option value="camera" th:selected="${currentSort == 'camera'}">Camera model</option>
-                                <option value="withCamera" th:selected="${currentSort == 'withCamera'}">Has camera info</option>
-                                <option value="withDateTaken" th:selected="${currentSort == 'withDateTaken'}">Has date taken</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="gallery-grid">
-                        <div class="tile" th:each="photo : ${photos}">
-                            <div class="thumb">
-                                <img th:src="@{/uploads/{f}(f=${photo.fileName})}"
-                                     th:alt="${photo.originalName}"
-                                     onerror="this.src='/images/placeholder.jpg'" />
-                                <div class="overlay">
-                                    <div>
-                                        <div class="muted small" th:if="${photo.camera}" th:text="${photo.camera}"></div>
-                                        <div class="muted small" th:if="${photo.dateTaken}" th:text="${photo.dateTaken}"></div>
+                        <div th:switch="${flowStep}">
+                            <div th:case="1">
+                                <p class="muted small">
+                                    Choose a category, or add a new one.
+                                </p>
+                                <form
+                                    class="form stacked"
+                                    th:action="@{/flow/album}"
+                                    method="get"
+                                >
+                                    <input type="hidden" name="step" value="2" />
+                                    <label>
+                                        <span>Category</span>
+                                        <select name="categoryId" required>
+                                            <option value="" selected>
+                                                Choose…
+                                            </option>
+                                            <option
+                                                th:each="c : ${categories}"
+                                                th:value="${c.id}"
+                                                th:text="${c.name}"
+                                            ></option>
+                                        </select>
+                                    </label>
+                                    <div class="actions">
+                                        <button type="submit">Next</button>
                                     </div>
-                                    <form
-                                        th:action="@{/photo/{id}/delete(id=${photo.id})}"
-                                        method="post"
-                                        onsubmit="return confirm('Delete this photo?');">
-                                        <input type="hidden" name="_method" value="DELETE" />
-                                        <button type="submit" class="ghost-btn">Delete</button>
-                                    </form>
+                                </form>
+
+                                <hr class="divider" />
+
+                                <form
+                                    class="form stacked"
+                                    th:action="@{/categories}"
+                                    method="post"
+                                >
+                                    <input
+                                        type="hidden"
+                                        name="redirectTo"
+                                        value="/flow/album?step=2&categoryId={categoryId}"
+                                    />
+                                    <label>
+                                        <span>Add a new category</span>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            placeholder="e.g., Weddings"
+                                            required
+                                        />
+                                    </label>
+                                    <label>
+                                        <span>Description</span>
+                                        <input
+                                            type="text"
+                                            name="description"
+                                            placeholder="Optional"
+                                        />
+                                    </label>
+                                    <div class="actions">
+                                        <button type="submit">
+                                            Save category &amp; continue
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div th:case="2">
+                                <p class="muted small">
+                                    Tell us about this album.
+                                </p>
+                                <div
+                                    class="chip ghost"
+                                    th:if="${currentCategory != null}"
+                                    th:text="${'Category: ' + currentCategory.name}"
+                                ></div>
+                                <form
+                                    class="form stacked"
+                                    th:action="@{/albums}"
+                                    method="post"
+                                >
+                                    <input
+                                        type="hidden"
+                                        name="categoryId"
+                                        th:value="${currentCategory != null ? currentCategory.id : ''}"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="redirectTo"
+                                        value="/flow/album?step=3&albumId={albumId}"
+                                    />
+                                    <label>
+                                        <span>Album name</span>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            placeholder="Client or event name"
+                                            required
+                                        />
+                                    </label>
+                                    <label>
+                                        <span>Description</span>
+                                        <input
+                                            type="text"
+                                            name="description"
+                                            placeholder="A short note (optional)"
+                                        />
+                                    </label>
+                                    <div class="actions">
+                                        <button type="submit">
+                                            Save album
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div th:case="3">
+                                <p class="muted small">
+                                    Add your first gallery.
+                                </p>
+                                <div
+                                    class="chip ghost"
+                                    th:if="${currentAlbum != null}"
+                                    th:text="${'Album: ' + currentAlbum.name}"
+                                ></div>
+                                <form
+                                    class="form stacked"
+                                    th:action="@{/galleries}"
+                                    method="post"
+                                >
+                                    <input
+                                        type="hidden"
+                                        name="albumId"
+                                        th:value="${currentAlbum != null ? currentAlbum.id : ''}"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="redirectTo"
+                                        value="/flow/album?step=4&galleryId={galleryId}"
+                                    />
+                                    <label>
+                                        <span>Gallery name</span>
+                                        <input
+                                            type="text"
+                                            name="title"
+                                            placeholder="Gallery name"
+                                            required
+                                        />
+                                    </label>
+                                    <label>
+                                        <span>Description</span>
+                                        <input
+                                            type="text"
+                                            name="description"
+                                            placeholder="Optional"
+                                        />
+                                    </label>
+                                    <div class="actions">
+                                        <button type="submit">
+                                            Save gallery
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div th:case="4">
+                                <p class="muted small">
+                                    Add photos now, or you can do it later.
+                                </p>
+                                <div
+                                    class="chip ghost"
+                                    th:if="${currentGallery != null}"
+                                    th:text="${'Gallery: ' + currentGallery.title}"
+                                ></div>
+                                <form
+                                    class="form stacked"
+                                    th:action="@{/upload}"
+                                    method="post"
+                                    enctype="multipart/form-data"
+                                >
+                                    <input
+                                        type="hidden"
+                                        name="galleryId"
+                                        th:value="${currentGallery != null ? currentGallery.id : ''}"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="redirectTo"
+                                        value="/gallery/{galleryId}"
+                                    />
+                                    <label>
+                                        <span>Photos</span>
+                                        <input
+                                            type="file"
+                                            name="files"
+                                            multiple
+                                            required
+                                        />
+                                    </label>
+                                    <div class="actions">
+                                        <button type="submit">
+                                            Upload photos
+                                        </button>
+                                        <a
+                                            class="ghost-btn"
+                                            th:if="${currentGallery != null}"
+                                            th:href="@{/gallery/{id}(id=${currentGallery.id})}"
+                                        >
+                                            Do this later
+                                        </a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+            </main>
+
+            <main class="gallery-page" th:if="${!flowMode}">
+                <article class="card">
+                    <div class="card-head align-end">
+                        <div class="stack">
+                            <p class="eyebrow">Gallery</p>
+                            <h2
+                                th:text="${currentGallery != null ? currentGallery.title : 'Select a gallery from your dashboard'}"
+                            ></h2>
+                            <div
+                                class="muted small"
+                                th:if="${currentGallery != null}"
+                                th:text="${currentAlbum != null ? currentAlbum.name : 'No album'}"
+                            ></div>
+                        </div>
+
+                        <div class="stack" style="align-items: flex-end;">
+                            <a class="pill ghost" th:href="@{/dashboard}">
+                                Back to dashboard
+                            </a>
+                            <div class="sorter" th:if="${currentGallery != null}">
+                                <label class="muted small">Sort</label>
+                                <select
+                                    onchange="
+                                        const baseUrl =
+                                            /*[[${'/gallery/' + currentGallery.id + '?sort='}]]*/ '';
+                                        if (baseUrl) {
+                                            window.location.href =
+                                                baseUrl + this.value;
+                                        }
+                                    "
+                                >
+                                    <option
+                                        value="uploadDate"
+                                        th:selected="${currentSort == 'uploadDate'}"
+                                    >
+                                        Latest uploaded
+                                    </option>
+                                    <option
+                                        value="dateTaken"
+                                        th:selected="${currentSort == 'dateTaken'}"
+                                    >
+                                        Date taken (newest)
+                                    </option>
+                                    <option
+                                        value="dateTakenAsc"
+                                        th:selected="${currentSort == 'dateTakenAsc'}"
+                                    >
+                                        Date taken (oldest)
+                                    </option>
+                                    <option
+                                        value="camera"
+                                        th:selected="${currentSort == 'camera'}"
+                                    >
+                                        Camera model
+                                    </option>
+                                    <option
+                                        value="withCamera"
+                                        th:selected="${currentSort == 'withCamera'}"
+                                    >
+                                        Has camera info
+                                    </option>
+                                    <option
+                                        value="withDateTaken"
+                                        th:selected="${currentSort == 'withDateTaken'}"
+                                    >
+                                        Has date taken
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <div class="masonry" id="masonryGrid" th:if="${currentGallery != null}">
+                    <div
+                        class="tile"
+                        th:each="photo : ${photos}"
+                        th:attr="data-full=@{/uploads/{f}(f=${photo.fileName})},data-title=${photo.originalName}"
+                    >
+                        <div class="thumb">
+                            <img
+                                th:src="@{/uploads/{f}(f=${photo.fileName})}"
+                                th:alt="${photo.originalName}"
+                                onerror="
+                                    this.src = '/images/placeholder.jpg'
+                                "
+                            />
+                            <div class="overlay">
+                                <div>
+                                    <div
+                                        class="muted small"
+                                        th:if="${photo.camera}"
+                                        th:text="${photo.camera}"
+                                    ></div>
+                                    <div
+                                        class="muted small"
+                                        th:if="${photo.dateTaken}"
+                                        th:text="${photo.dateTaken}"
+                                    ></div>
                                 </div>
+                                <form
+                                    th:action="@{/photo/{id}/delete(id=${photo.id})}"
+                                    method="post"
+                                    onsubmit="
+                                        return confirm(
+                                            'Delete this photo?',
+                                        );
+                                    "
+                                >
+                                    <input
+                                        type="hidden"
+                                        name="_method"
+                                        value="DELETE"
+                                    />
+                                    <button
+                                        type="submit"
+                                        class="ghost-btn"
+                                    >
+                                        Delete
+                                    </button>
+                                </form>
                             </div>
-                            <div class="tile-meta">
-                                <div class="strong small" th:text="${photo.originalName}"></div>
-                                <div class="muted small" th:if="${photo.imageWidth != null and photo.imageHeight != null}" th:text="${photo.imageWidth} + '×' + ${photo.imageHeight}"></div>
-                            </div>
+                        </div>
+                        <div class="tile-meta">
+                            <div
+                                class="strong small"
+                                th:text="${photo.originalName}"
+                            ></div>
+                            <div
+                                class="muted small"
+                                th:if="${photo.imageWidth != null and photo.imageHeight != null}"
+                                th:text="${photo.imageWidth} + '×' + ${photo.imageHeight}"
+                            ></div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="muted text-center" th:if="${photos == null or photos.size() == 0}">
-                        No photos yet. Upload to start curating.
-                    </div>
-                </article>
+                <div
+                    class="muted text-center"
+                    th:if="${currentGallery != null and (photos == null or photos.size() == 0)}"
+                >
+                    No photos here yet. Upload some when you’re ready.
+                </div>
 
-                <article class="card text-center muted" th:if="${currentGallery == null}">
-                    Select or create a gallery to view photos.
+                <article
+                    class="card text-center muted"
+                    th:if="${currentGallery == null}"
+                >
+                    Head back to your dashboard to choose a gallery.
                 </article>
-            </section>
+            </main>
+        </div>
 
-            <section class="column">
-                <article class="card gradient">
-                    <div class="card-head">
-                        <div>
-                            <p class="eyebrow">Upload</p>
-                            <h2>Add photos</h2>
-                        </div>
-                        <span class="pill" th:if="${currentGallery != null}" th:text="${currentGallery.title}"></span>
-                    </div>
-                    <form class="form stacked" th:action="@{/upload}" method="post" enctype="multipart/form-data">
-                        <label>
-                            <span>Gallery</span>
-                            <select name="galleryId" required>
-                                <option value="" th:if="${currentGallery == null}" selected>Choose…</option>
-                                <option th:each="g : ${galleries}"
-                                        th:value="${g.id}"
-                                        th:text="${g.title}"
-                                        th:selected="${currentGallery != null and currentGallery.id == g.id}"></option>
-                            </select>
-                        </label>
-                        <label>
-                            <span>Files</span>
-                            <input type="file" name="files" multiple required />
-                        </label>
-                        <div class="actions">
-                            <button type="submit">Upload</button>
-                        </div>
-                    </form>
-                </article>
-            </section>
-        </main>
-    </div>
-</body>
+        <!-- Lightbox preview -->
+        <div class="lightbox" id="lightbox">
+            <div class="lightbox-inner">
+                <div class="lightbox-bar">
+                    <div class="lightbox-title" id="lightboxTitle"></div>
+                    <button class="lightbox-close" id="lightboxClose">
+                        Close
+                    </button>
+                </div>
+                <img class="lightbox-img" id="lightboxImg" alt="" />
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                const grid = document.getElementById('masonryGrid');
+                const box = document.getElementById('lightbox');
+                const img = document.getElementById('lightboxImg');
+                const title = document.getElementById('lightboxTitle');
+                const closeBtn = document.getElementById('lightboxClose');
+                if (!grid || !box || !img) return;
+
+                function openLightbox(src, caption) {
+                    img.src = src;
+                    title.textContent = caption || '';
+                    box.classList.add('open');
+                    document.body.style.overflow = 'hidden';
+                }
+                function closeLightbox() {
+                    box.classList.remove('open');
+                    img.src = '';
+                    document.body.style.overflow = '';
+                }
+
+                grid.addEventListener('click', (e) => {
+                    const tile = e.target.closest('.tile');
+                    if (!tile) return;
+                    const full = tile.getAttribute('data-full');
+                    if (!full) return;
+                    openLightbox(full, tile.getAttribute('data-title'));
+                });
+
+                closeBtn && closeBtn.addEventListener('click', closeLightbox);
+                box.addEventListener('click', (e) => {
+                    if (e.target === box) closeLightbox();
+                });
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') closeLightbox();
+                });
+            })();
+        </script>
+    </body>
 </html>

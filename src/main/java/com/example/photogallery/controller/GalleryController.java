@@ -55,6 +55,7 @@ public class GalleryController {
         model.addAttribute("galleries", galleries);
         model.addAttribute("currentGallery", null); // important for template logic
         model.addAttribute("currentAlbum", null);
+        model.addAttribute("flowMode", false);
 
         return "gallery";
     }
@@ -78,6 +79,7 @@ public class GalleryController {
         model.addAttribute("galleries", galleries);
         model.addAttribute("currentGallery", currentGallery);
         model.addAttribute("currentAlbum", currentGallery.getAlbum());
+        model.addAttribute("flowMode", false);
 
         return "gallery";
     }
@@ -86,6 +88,7 @@ public class GalleryController {
     public String handleFileUpload(
         @RequestParam("files") MultipartFile[] files,
         @RequestParam(name = "galleryId") Long galleryId,
+        @RequestParam(value = "redirectTo", required = false) String redirectTo,
         RedirectAttributes redirectAttributes
     ) {
         if (galleryId == null) {
@@ -144,7 +147,10 @@ public class GalleryController {
         }
 
         redirectAttributes.addFlashAttribute("message", msg.toString().trim());
-        return "redirect:/gallery/" + galleryId;
+        String target = redirectTo != null
+            ? safeRedirect(redirectTo).replace("{galleryId}", galleryId.toString())
+            : ("/gallery/" + galleryId);
+        return "redirect:" + target;
     }
 
     @DeleteMapping("/photo/{id}/delete")
@@ -168,14 +174,22 @@ public class GalleryController {
     public String createCategory(
         @RequestParam("name") String name,
         @RequestParam(value = "description", required = false) String description,
+        @RequestParam(value = "redirectTo", required = false) String redirectTo,
         RedirectAttributes redirectAttributes
     ) {
         try {
-            categoryService.create(name, description);
+            var created = categoryService.create(name, description);
             redirectAttributes.addFlashAttribute(
                 "message",
                 "Category created."
             );
+            if (redirectTo != null) {
+                String target = safeRedirect(redirectTo).replace(
+                    "{categoryId}",
+                    created.getId().toString()
+                );
+                return "redirect:" + target;
+            }
         } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute(
                 "message",
@@ -190,14 +204,22 @@ public class GalleryController {
         @RequestParam("name") String name,
         @RequestParam(value = "description", required = false) String description,
         @RequestParam(value = "categoryId", required = false) Long categoryId,
+        @RequestParam(value = "redirectTo", required = false) String redirectTo,
         RedirectAttributes redirectAttributes
     ) {
         try {
             var category = categoryId != null
                 ? categoryService.getById(categoryId)
                 : categoryService.getOrCreateDefaultCategory();
-            albumService.create(category, name, description);
+            var created = albumService.create(category, name, description);
             redirectAttributes.addFlashAttribute("message", "Album created.");
+            if (redirectTo != null) {
+                String target = safeRedirect(redirectTo).replace(
+                    "{albumId}",
+                    created.getId().toString()
+                );
+                return "redirect:" + target;
+            }
         } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute(
                 "message",
@@ -213,6 +235,7 @@ public class GalleryController {
         @RequestParam(value = "description", required = false) String description,
         @RequestParam(value = "albumId", required = false) Long albumId,
         @RequestParam(value = "parentId", required = false) Long parentId,
+        @RequestParam(value = "redirectTo", required = false) String redirectTo,
         RedirectAttributes redirectAttributes
     ) {
         try {
@@ -239,6 +262,13 @@ public class GalleryController {
                 "message",
                 "Gallery created: #" + created.getId()
             );
+            if (redirectTo != null) {
+                String target = safeRedirect(redirectTo).replace(
+                    "{galleryId}",
+                    created.getId().toString()
+                );
+                return "redirect:" + target;
+            }
             return "redirect:/gallery/" + created.getId();
         } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute(
@@ -247,5 +277,13 @@ public class GalleryController {
             );
             return "redirect:/";
         }
+    }
+
+    private static String safeRedirect(String redirectTo) {
+        String trimmed = redirectTo.trim();
+        if (!trimmed.startsWith("/") || trimmed.contains("://")) {
+            return "/";
+        }
+        return trimmed;
     }
 }

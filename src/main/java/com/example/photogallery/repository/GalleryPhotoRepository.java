@@ -19,6 +19,11 @@ public interface GalleryPhotoRepository
         Tenant tenant
     );
 
+    Optional<GalleryPhoto> findFirstByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc(
+        Long galleryId,
+        Tenant tenant
+    );
+
     Optional<GalleryPhoto> findByGalleryAndPhoto(Gallery gallery, Photo photo);
 
     void deleteByGalleryAndPhoto(Gallery gallery, Photo photo);

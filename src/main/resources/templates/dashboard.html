@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Heroui Gallery Studio — Dashboard</title>
+        <link rel="stylesheet" th:href="@{/css/style.css}" />
+    </head>
+    <body class="page">
+        <div class="bg-mesh"></div>
+        <div class="shell">
+            <main class="workbench">
+                <!-- Left sidebar -->
+                <section class="column">
+                    <article class="card">
+                        <p class="eyebrow">Client Galleries</p>
+                        <h2>Studio</h2>
+                        <p class="muted small">
+                            Start a new album, then open a gallery to add and
+                            share photos.
+                        </p>
+                        <div class="stack">
+                            <a class="chip clickable accent" th:href="@{/dashboard}">
+                                My galleries
+                            </a>
+                            <a class="chip clickable" th:href="@{/flow/album}">
+                                Create new album
+                            </a>
+                            <a
+                                class="chip clickable"
+                                th:if="${galleries != null and !galleries.isEmpty()}"
+                                th:href="@{/gallery/{id}(id=${galleries[0].id})}"
+                            >
+                                Open most recent
+                            </a>
+                        </div>
+                        <div class="divider"></div>
+                        <div class="stack small muted">
+                            <div
+                                th:text="${categories != null ? #lists.size(categories) : 0} + ' categories'"
+                            ></div>
+                            <div
+                                th:text="${albums != null ? #lists.size(albums) : 0} + ' albums'"
+                            ></div>
+                            <div
+                                th:text="${galleries != null ? #lists.size(galleries) : 0} + ' galleries'"
+                            ></div>
+                        </div>
+                    </article>
+
+                    <article class="card" th:if="${categories != null}">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Categories</p>
+                                <h2>Browse by category</h2>
+                            </div>
+                        </div>
+                        <div class="chip-cloud">
+                            <span class="chip ghost">All</span>
+                            <span
+                                class="chip ghost"
+                                th:each="c : ${categories}"
+                                th:text="${c.name}"
+                            ></span>
+                        </div>
+                    </article>
+                </section>
+
+                <!-- Main content -->
+                <section class="column main">
+                    <article class="card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Your galleries</p>
+                                <h2>Galleries</h2>
+                            </div>
+                            <a class="pill ghost" th:href="@{/flow/album}">
+                                + New album
+                            </a>
+                        </div>
+                        <form class="form inline" method="get" th:action="@{/dashboard}">
+                            <select name="categoryId">
+                                <option value="">All categories</option>
+                                <option
+                                    th:each="c : ${categories}"
+                                    th:value="${c.id}"
+                                    th:text="${c.name}"
+                                ></option>
+                            </select>
+                            <select name="albumId">
+                                <option value="">All albums</option>
+                                <option
+                                    th:each="a : ${albums}"
+                                    th:value="${a.id}"
+                                    th:text="${a.name}"
+                                ></option>
+                            </select>
+                            <select name="sort">
+                                <option value="createdAt">Newest first</option>
+                                <option value="title">A–Z</option>
+                            </select>
+                            <input
+                                type="search"
+                                name="q"
+                                placeholder="Search galleries"
+                            />
+                            <button type="submit">Filter</button>
+                        </form>
+                    </article>
+
+                    <div class="gallery-grid">
+                        <!-- Add tile -->
+                        <a class="tile" th:href="@{/flow/album}">
+                            <div class="thumb">
+                                <div
+                                    style="height: 200px; display: flex; align-items: center; justify-content: center; font-size: 48px; color: var(--muted);"
+                                >
+                                    +
+                                </div>
+                            </div>
+                            <div class="tile-meta text-center">
+                                <div class="strong small">
+                                    Create a new gallery
+                                </div>
+                                <div class="muted small">
+                                    Start a new album
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- Existing galleries -->
+                        <a
+                            class="tile"
+                            th:each="g : ${galleries}"
+                            th:href="@{/gallery/{id}(id=${g.id})}"
+                        >
+                            <div class="thumb">
+                                <img
+                                    th:if="${galleryThumbnails != null and galleryThumbnails[g.id] != null}"
+                                    th:src="@{/uploads/{f}(f=${galleryThumbnails[g.id]})}"
+                                    th:alt="${g.title}"
+                                    onerror="this.style.display='none'"
+                                />
+                                <div
+                                    th:if="${galleryThumbnails == null or galleryThumbnails[g.id] == null}"
+                                    style="height: 200px; display: flex; align-items: center; justify-content: center; color: var(--muted);"
+                                >
+                                    <span
+                                        class="pill ghost"
+                                        th:text="${g.visibility}"
+                                    ></span>
+                                </div>
+                            </div>
+                            <div class="tile-meta text-center">
+                                <div class="strong small" th:text="${g.title}"></div>
+                                <div
+                                    class="muted small"
+                                    th:text="${g.album != null ? g.album.name : 'Default album'}"
+                                ></div>
+                                <div
+                                    class="muted small"
+                                    th:if="${g.createdAt != null}"
+                                    th:text="${#temporals.format(g.createdAt, 'MMM d, yyyy')}"
+                                ></div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <article
+                        class="card text-center muted"
+                        th:if="${galleries == null or galleries.isEmpty()}"
+                    >
+                        No galleries yet. Create your first album to get started.
+                    </article>
+                </section>
+
+                <!-- Right column placeholder to preserve workbench rhythm -->
+                <section class="column">
+                    <article class="card gradient">
+                        <p class="eyebrow">Ready to start?</p>
+                        <h2>Create an album</h2>
+                        <p class="muted small">
+                            We’ll walk you through category, album, gallery, then
+                            photos.
+                        </p>
+                        <a class="chip clickable accent" th:href="@{/flow/album}">
+                            Start album setup
+                        </a>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </body>
+</html>
