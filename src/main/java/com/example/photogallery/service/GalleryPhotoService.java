@@ -29,8 +29,11 @@ public class GalleryPhotoService {
     @Autowired
     private TenantService tenantService;
 
+    @Autowired
+    private PhotoService photoService;
+
     public Photo getThumbnailPhotoForGallery(Long galleryId) {
-        Tenant tenant = tenantService.getDefaultTenant();
+        Tenant tenant = tenantService.getCurrentTenant();
         Gallery gallery = galleryRepository
             .findByIdAndTenant(galleryId, tenant)
             .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
@@ -56,7 +59,7 @@ public class GalleryPhotoService {
         Long photoId,
         Integer sortOrder
     ) {
-        Tenant tenant = tenantService.getDefaultTenant();
+        Tenant tenant = tenantService.getCurrentTenant();
         Gallery gallery = galleryRepository
             .findByIdAndTenant(galleryId, tenant)
             .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
@@ -88,7 +91,7 @@ public class GalleryPhotoService {
 
     @Transactional
     public void removePhotoFromGallery(Long galleryId, Long photoId) {
-        Tenant tenant = tenantService.getDefaultTenant();
+        Tenant tenant = tenantService.getCurrentTenant();
         Gallery gallery = galleryRepository
             .findByIdAndTenant(galleryId, tenant)
             .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
@@ -98,6 +101,9 @@ public class GalleryPhotoService {
             .orElseThrow(() -> new NoSuchElementException("Photo not found"));
 
         galleryPhotoRepository.deleteByGalleryAndPhoto(gallery, photo);
+
+        // If that was the last reference to the photo, remove it from DB + disk so it can be reuploaded.
+        photoService.purgeOrphanedPhotosForCurrentTenant();
     }
 
     // ---- List photos in a gallery ----
@@ -107,7 +113,7 @@ public class GalleryPhotoService {
         return galleryPhotoRepository
             .findByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc(
                 galleryId,
-                tenantService.getDefaultTenant()
+                tenantService.getCurrentTenant()
             )
             .stream()
             .map(GalleryPhoto::getPhoto)
@@ -119,7 +125,7 @@ public class GalleryPhotoService {
 
     @Transactional
     public void reorderPhotos(Long galleryId, List<Long> orderedPhotoIds) {
-        Tenant tenant = tenantService.getDefaultTenant();
+        Tenant tenant = tenantService.getCurrentTenant();
         Gallery gallery = galleryRepository
             .findByIdAndTenant(galleryId, tenant)
             .orElseThrow(() -> new NoSuchElementException("Gallery not found"));

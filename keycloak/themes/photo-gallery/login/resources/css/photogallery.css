@@ -1,0 +1,122 @@
+:root {
+    --bg: #ffffff;
+    --surface: #f6f8fc;
+    --panel: #ffffff;
+    --card: #ffffff;
+    --stroke: rgba(15, 23, 42, 0.12);
+    --muted: #5b647a;
+    --ink: #0f172a;
+    --accent: #0ea5e9;
+    --accent-2: #8b5cf6;
+    --glow: 0 18px 45px rgba(14, 165, 233, 0.25);
+    --radius: 16px;
+}
+
+/* Page background (matches app's "bg-mesh") */
+body,
+body.login-pf {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg) !important;
+    background-image: none !important;
+    color: var(--ink);
+    font-family:
+        "Sora",
+        "Inter",
+        system-ui,
+        -apple-system,
+        sans-serif;
+}
+
+body::before {
+    display: none !important;
+}
+
+/* Center the login "card" */
+.login-pf-page,
+#kc-content {
+    position: relative;
+    z-index: 1;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 32px 18px 42px;
+    background: transparent !important;
+    background-image: none !important;
+}
+
+/* Keycloak variants across versions/themes */
+#kc-content-wrapper,
+.card-pf,
+.pf-c-login__main {
+    background: var(--panel);
+    border: 1px solid var(--stroke);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+}
+
+/* Hide the default realm header ("photo-gallery") */
+#kc-header,
+#kc-header-wrapper,
+.pf-c-login__header {
+    display: none !important;
+}
+
+#kc-page-title {
+    font-size: 20px;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+}
+
+/* Inputs */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+select,
+.pf-c-form-control {
+    font: inherit;
+    border-radius: 12px;
+    border: 1px solid var(--stroke) !important;
+    background: var(--card) !important;
+    color: var(--ink) !important;
+    padding: 10px 12px;
+}
+
+/* Primary button */
+button,
+input[type="submit"],
+.pf-c-button.pf-m-primary,
+#kc-login {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    cursor: pointer;
+    font-weight: 700;
+    box-shadow: var(--glow);
+    padding: 10px 12px;
+}
+
+button:hover,
+input[type="submit"]:hover,
+.pf-c-button.pf-m-primary:hover,
+#kc-login:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 40px rgba(14, 165, 233, 0.32);
+}
+
+/* Links + helper text */
+a,
+.kc-link,
+#kc-registration a {
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.kc-feedback-text,
+.pf-c-helper-text,
+#kc-info-message,
+.subtitle,
+.pf-c-login__main-footer-links {
+    color: var(--muted) !important;
+}

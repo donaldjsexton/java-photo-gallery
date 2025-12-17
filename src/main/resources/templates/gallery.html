@@ -4,11 +4,20 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Heroui Gallery Studio</title>
+        <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}" />
+        <meta
+            name="_csrf_header"
+            th:if="${_csrf != null}"
+            th:content="${_csrf.headerName}"
+        />
         <link rel="stylesheet" th:href="@{/css/style.css}" />
     </head>
     <body class="page">
         <div class="bg-mesh"></div>
         <div class="shell">
+            <div class="card" th:if="${message != null}" style="margin-bottom: 16px;">
+                <div class="muted small" th:text="${message}"></div>
+            </div>
             <section class="flow" th:if="${flowMode}">
                 <div class="flow-head">
                     <div>
@@ -141,6 +150,11 @@
                                 >
                                     <input
                                         type="hidden"
+                                        th:name="${_csrf.parameterName}"
+                                        th:value="${_csrf.token}"
+                                    />
+                                    <input
+                                        type="hidden"
                                         name="redirectTo"
                                         value="/flow/album?step=2&categoryId={categoryId}"
                                     />
@@ -183,6 +197,11 @@
                                     th:action="@{/albums}"
                                     method="post"
                                 >
+                                    <input
+                                        type="hidden"
+                                        th:name="${_csrf.parameterName}"
+                                        th:value="${_csrf.token}"
+                                    />
                                     <input
                                         type="hidden"
                                         name="categoryId"
@@ -234,6 +253,11 @@
                                 >
                                     <input
                                         type="hidden"
+                                        th:name="${_csrf.parameterName}"
+                                        th:value="${_csrf.token}"
+                                    />
+                                    <input
+                                        type="hidden"
                                         name="albumId"
                                         th:value="${currentAlbum != null ? currentAlbum.id : ''}"
                                     />
@@ -278,10 +302,16 @@
                                 ></div>
                                 <form
                                     class="form stacked"
+                                    id="bulkUploadForm"
                                     th:action="@{/upload}"
                                     method="post"
                                     enctype="multipart/form-data"
                                 >
+                                    <input
+                                        type="hidden"
+                                        th:name="${_csrf.parameterName}"
+                                        th:value="${_csrf.token}"
+                                    />
                                     <input
                                         type="hidden"
                                         name="galleryId"
@@ -290,17 +320,29 @@
                                     <input
                                         type="hidden"
                                         name="redirectTo"
-                                        value="/gallery/{galleryId}"
+                                        value="/{gallerySlug}"
                                     />
                                     <label>
                                         <span>Photos</span>
                                         <input
                                             type="file"
                                             name="files"
+                                            id="fileInput"
                                             multiple
                                             required
                                         />
                                     </label>
+                                    <label>
+                                        <span>On duplicates</span>
+                                        <select name="duplicateMode" id="duplicateMode">
+                                            <option value="cancel" selected>
+                                                Stop (default)
+                                            </option>
+                                            <option value="skip">Skip</option>
+                                            <option value="overwrite">Overwrite</option>
+                                        </select>
+                                    </label>
+                                    <div class="muted small" id="uploadStatus"></div>
                                     <div class="actions">
                                         <button type="submit">
                                             Upload photos
@@ -308,7 +350,7 @@
                                         <a
                                             class="ghost-btn"
                                             th:if="${currentGallery != null}"
-                                            th:href="@{/gallery/{id}(id=${currentGallery.id})}"
+                                            th:href="${currentGallery.slug != null ? '/' + currentGallery.slug : '/gallery/' + currentGallery.id}"
                                         >
                                             Do this later
                                         </a>
@@ -344,7 +386,7 @@
                                 <select
                                     onchange="
                                         const baseUrl =
-                                            /*[[${'/gallery/' + currentGallery.id + '?sort='}]]*/ '';
+                                            /*[[${currentGallery != null and currentGallery.slug != null ? '/' + currentGallery.slug + '?sort=' : '/gallery/' + currentGallery.id + '?sort='}]]*/ '';
                                         if (baseUrl) {
                                             window.location.href =
                                                 baseUrl + this.value;
@@ -389,6 +431,89 @@
                                     </option>
                                 </select>
                             </div>
+
+                            <details class="manage" th:if="${currentGallery != null}">
+                                <summary class="pill ghost">
+                                    Manage gallery
+                                </summary>
+
+                                <form
+                                    class="form stacked"
+                                    th:action="@{/galleries/{id}(id=${currentGallery.id})}"
+                                    method="post"
+                                >
+                                    <input
+                                        type="hidden"
+                                        th:name="${_csrf.parameterName}"
+                                        th:value="${_csrf.token}"
+                                    />
+                                    <input type="hidden" name="_method" value="PUT" />
+                                    <input
+                                        type="hidden"
+                                        name="redirectTo"
+                                        value="/{gallerySlug}"
+                                    />
+                                    <label>
+                                        <span>Title</span>
+                                        <input
+                                            type="text"
+                                            name="title"
+                                            th:value="${currentGallery.title}"
+                                            required
+                                        />
+                                    </label>
+                                    <label>
+                                        <span>Description</span>
+                                        <input
+                                            type="text"
+                                            name="description"
+                                            th:value="${currentGallery.description}"
+                                            placeholder="Optional"
+                                        />
+                                    </label>
+                                    <label>
+                                        <span>Visibility</span>
+                                        <select name="visibility">
+                                            <option
+                                                value="private"
+                                                th:selected="${currentGallery.visibility == 'private'}"
+                                            >
+                                                Private
+                                            </option>
+                                            <option
+                                                value="public"
+                                                th:selected="${currentGallery.visibility == 'public'}"
+                                            >
+                                                Public
+                                            </option>
+                                        </select>
+                                    </label>
+                                    <div class="actions">
+                                        <button type="submit">
+                                            Save changes
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <form
+                                    th:action="@{/galleries/{id}(id=${currentGallery.id})}"
+                                    method="post"
+                                    onsubmit="return confirm('Delete this gallery? Any sub-galleries will be moved to the root. Photos not used in other galleries will be deleted.');"
+                                >
+                                    <input
+                                        type="hidden"
+                                        th:name="${_csrf.parameterName}"
+                                        th:value="${_csrf.token}"
+                                    />
+                                    <input type="hidden" name="_method" value="DELETE" />
+                                    <input type="hidden" name="redirectTo" value="/dashboard" />
+                                    <div class="actions">
+                                        <button type="submit" class="danger">
+                                            Delete gallery
+                                        </button>
+                                    </div>
+                                </form>
+                            </details>
                         </div>
                     </div>
                 </article>
@@ -397,11 +522,11 @@
                     <div
                         class="tile"
                         th:each="photo : ${photos}"
-                        th:attr="data-full=@{/uploads/{f}(f=${photo.fileName})},data-title=${photo.originalName}"
+                        th:attr="data-full=@{'/uploads/' + ${photo.fileName}},data-title=${photo.originalName}"
                     >
                         <div class="thumb">
                             <img
-                                th:src="@{/uploads/{f}(f=${photo.fileName})}"
+                                th:src="@{'/uploads/' + ${photo.fileName}}"
                                 th:alt="${photo.originalName}"
                                 onerror="
                                     this.src = '/images/placeholder.jpg'
@@ -429,6 +554,11 @@
                                         );
                                     "
                                 >
+                                    <input
+                                        type="hidden"
+                                        th:name="${_csrf.parameterName}"
+                                        th:value="${_csrf.token}"
+                                    />
                                     <input
                                         type="hidden"
                                         name="_method"
@@ -521,6 +651,140 @@
                 });
                 window.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') closeLightbox();
+                });
+            })();
+        </script>
+
+        <script>
+            (function () {
+                const form = document.getElementById('bulkUploadForm');
+                const fileInput = document.getElementById('fileInput');
+                const duplicateMode = document.getElementById('duplicateMode');
+                const statusEl = document.getElementById('uploadStatus');
+                if (!form || !fileInput) return;
+
+                const csrfToken =
+                    document.querySelector('meta[name="_csrf"]')?.getAttribute('content') ||
+                    null;
+                const csrfHeader =
+                    document
+                        .querySelector('meta[name="_csrf_header"]')
+                        ?.getAttribute('content') || 'X-CSRF-TOKEN';
+
+                function setStatus(text) {
+                    if (!statusEl) return;
+                    statusEl.textContent = text || '';
+                }
+
+                async function readError(response) {
+                    const contentType = response.headers.get('content-type') || '';
+                    if (contentType.includes('application/json')) {
+                        try {
+                            const json = await response.json();
+                            return json?.message || JSON.stringify(json);
+                        } catch {
+                            return 'Request failed';
+                        }
+                    }
+                    try {
+                        return await response.text();
+                    } catch {
+                        return 'Request failed';
+                    }
+                }
+
+                form.addEventListener('submit', async (e) => {
+                    const files = Array.from(fileInput.files || []);
+                    if (files.length === 0) return;
+
+                    // If we don't have CSRF info, fall back to normal form post.
+                    if (!csrfToken) return;
+
+                    e.preventDefault();
+                    setStatus(`Uploading ${files.length} photo(s)…`);
+
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    if (submitBtn) submitBtn.disabled = true;
+
+                    const galleryId = form.querySelector('input[name="galleryId"]')?.value;
+                    if (!galleryId) {
+                        setStatus('Missing gallery id; refresh and try again.');
+                        if (submitBtn) submitBtn.disabled = false;
+                        return;
+                    }
+
+                    const mode = duplicateMode?.value || 'cancel';
+                    let success = 0;
+                    let skipped = 0;
+                    let failed = 0;
+
+                    for (let index = 0; index < files.length; index++) {
+                        const file = files[index];
+                        setStatus(
+                            `Uploading ${index + 1}/${files.length}: ${file.name}…`
+                        );
+
+                        try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+
+                            const uploadResp = await fetch(
+                                `/api/photos?onDuplicate=${encodeURIComponent(
+                                    mode
+                                )}&galleryId=${encodeURIComponent(galleryId)}`,
+                                {
+                                    method: 'POST',
+                                    body: formData,
+                                    credentials: 'same-origin',
+                                    headers: {
+                                        [csrfHeader]: csrfToken,
+                                    },
+                                }
+                            );
+
+                            if (!uploadResp.ok) {
+                                const err = await readError(uploadResp);
+                                if (
+                                    uploadResp.status === 400 &&
+                                    String(err).toLowerCase().includes('duplicate')
+                                ) {
+                                    skipped++;
+                                    continue;
+                                }
+                                failed++;
+                                continue;
+                            }
+
+                            const photo = await uploadResp.json();
+                            const linkResp = await fetch(
+                                `/api/galleries/${encodeURIComponent(
+                                    galleryId
+                                )}/photos/${encodeURIComponent(photo.id)}`,
+                                {
+                                    method: 'POST',
+                                    credentials: 'same-origin',
+                                    headers: {
+                                        [csrfHeader]: csrfToken,
+                                    },
+                                }
+                            );
+                            if (!linkResp.ok) {
+                                failed++;
+                                continue;
+                            }
+
+                            success++;
+                        } catch (err) {
+                            failed++;
+                        }
+                    }
+
+                    setStatus(
+                        `Done. Uploaded ${success}, skipped ${skipped}, failed ${failed}. Redirecting…`
+                    );
+                    const redirectUrl =
+                        /*[[${currentGallery != null and currentGallery.slug != null ? '/' + currentGallery.slug : '/gallery/' + currentGallery.id}]]*/ '/';
+                    window.location.assign(redirectUrl);
                 });
             })();
         </script>

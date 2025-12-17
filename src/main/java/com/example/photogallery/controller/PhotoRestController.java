@@ -47,6 +47,7 @@ public class PhotoRestController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Photo> upload(
         @RequestParam("file") MultipartFile file,
+        @RequestParam(name = "galleryId", required = false) Long galleryId,
         @RequestParam(
             name = "onDuplicate",
             defaultValue = "cancel"
@@ -55,7 +56,9 @@ public class PhotoRestController {
         PhotoService.DuplicateHandling handling =
             PhotoService.DuplicateHandling.fromString(onDuplicate);
 
-        Photo saved = photoService.savePhoto(file, handling);
+        Photo saved = galleryId != null
+            ? photoService.savePhotoForGallery(file, galleryId, handling)
+            : photoService.savePhoto(file, handling);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 

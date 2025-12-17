@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/gallery_dev
+    username: gallery
+    password: gallery
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.default_schema: public
+
+  flyway:
+    enabled: true
+    create-schemas: true
+    default-schema: public
+    schemas: public
+

@@ -6,34 +6,55 @@ if (fileInput && duplicateModeSelect) {
     const files = Array.from(e.target.files);
     const mode = duplicateModeSelect.value;
 
-    files.forEach((file) => uploadFile(file, mode));
+    uploadAll(files, mode);
   });
 }
 
-async function uploadFile(file, mode) {
-  const formData = new FormData();
-  formData.append("file", file);
+function getCsrf() {
+  const token =
+    document.querySelector('meta[name="_csrf"]')?.getAttribute("content") ||
+    null;
+  const header =
+    document
+      .querySelector('meta[name="_csrf_header"]')
+      ?.getAttribute("content") || "X-CSRF-TOKEN";
+  return { token, header };
+}
 
-  try {
-    const response = await fetch(`/api/photos?onDuplicate=${mode}`, {
-      method: "POST",
-      body: formData,
-    });
+async function uploadAll(files, mode) {
+  const { token, header } = getCsrf();
+  if (!token) {
+    alert("Missing CSRF token; refresh and try again.");
+    return;
+  }
 
-    if (!response.ok) {
-      const text = await response.text();
-      alert("Upload failed: " + text);
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch(`/api/photos?onDuplicate=${mode}`, {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+        headers: {
+          [header]: token,
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        alert("Upload failed: " + text);
+        return;
+      }
+
+      const photo = await response.json();
+      console.log("Uploaded:", photo);
+    } catch (err) {
+      alert("Network error or server unavailable");
       return;
     }
-
-    // You return a Photo JSON object, so parse it:
-    const photo = await response.json();
-
-    console.log("Uploaded:", photo);
-
-    // Reload after each file upload completes (or delay until last)
-    location.reload();
-  } catch (err) {
-    alert("Network error or server unavailable");
   }
+
+  location.reload();
 }

@@ -9,7 +9,13 @@
     <body class="page">
         <div class="bg-mesh"></div>
         <div class="shell">
-            <main class="workbench">
+            <div class="card" th:if="${message != null}" style="margin-bottom: 16px;">
+                <div class="muted small" th:text="${message}"></div>
+            </div>
+            <main
+                class="workbench"
+                th:classappend="${galleries != null and !galleries.isEmpty()} ? 'no-onboarding' : ''"
+            >
                 <!-- Left sidebar -->
                 <section class="column">
                     <article class="card">
@@ -29,10 +35,20 @@
                             <a
                                 class="chip clickable"
                                 th:if="${galleries != null and !galleries.isEmpty()}"
-                                th:href="@{/gallery/{id}(id=${galleries[0].id})}"
+                                th:href="${galleries[0].slug != null ? '/' + galleries[0].slug : '/gallery/' + galleries[0].id}"
                             >
                                 Open most recent
                             </a>
+                            <form th:action="@{/logout}" method="post">
+                                <input
+                                    type="hidden"
+                                    th:name="${_csrf.parameterName}"
+                                    th:value="${_csrf.token}"
+                                />
+                                <button type="submit" class="chip clickable">
+                                    Sign out
+                                </button>
+                            </form>
                         </div>
                         <div class="divider"></div>
                         <div class="stack small muted">
@@ -132,12 +148,12 @@
                         <a
                             class="tile"
                             th:each="g : ${galleries}"
-                            th:href="@{/gallery/{id}(id=${g.id})}"
+                            th:href="${g.slug != null ? '/' + g.slug : '/gallery/' + g.id}"
                         >
                             <div class="thumb">
                                 <img
                                     th:if="${galleryThumbnails != null and galleryThumbnails[g.id] != null}"
-                                    th:src="@{/uploads/{f}(f=${galleryThumbnails[g.id]})}"
+                                    th:src="@{'/uploads/' + ${galleryThumbnails[g.id]}}"
                                     th:alt="${g.title}"
                                     onerror="this.style.display='none'"
                                 />
@@ -175,7 +191,10 @@
                 </section>
 
                 <!-- Right column placeholder to preserve workbench rhythm -->
-                <section class="column">
+                <section
+                    class="column"
+                    th:if="${galleries == null or galleries.isEmpty()}"
+                >
                     <article class="card gradient">
                         <p class="eyebrow">Ready to start?</p>
                         <h2>Create an album</h2>

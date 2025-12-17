@@ -6,6 +6,7 @@ import com.example.photogallery.service.GalleryPhotoService;
 import com.example.photogallery.service.GalleryService;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -161,6 +162,8 @@ public class GalleryRestController {
     private GalleryDto toDto(Gallery g) {
         return new GalleryDto(
             g.getId(),
+            g.getPublicId(),
+            g.getSlug(),
             g.getTitle(),
             g.getDescription(),
             g.getVisibility(),
@@ -173,6 +176,8 @@ public class GalleryRestController {
 
     public record GalleryDto(
         Long id,
+        UUID publicId,
+        String slug,
         String title,
         String description,
         String visibility,

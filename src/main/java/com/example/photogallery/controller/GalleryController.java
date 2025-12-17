@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -67,7 +68,34 @@ public class GalleryController {
         Model model
     ) {
         Gallery currentGallery = galleryService.getGallery(galleryId);
+        if (currentGallery.getSlug() != null && !currentGallery.getSlug().isBlank()) {
+            return "redirect:/" + currentGallery.getSlug() + "?sort=" + sort;
+        }
         List<Photo> photos = galleryPhotoService.getPhotosInGallery(galleryId);
+        List<Gallery> galleries = galleryService.getRootGalleries();
+        model.addAttribute("categories", categoryService.listForCurrentTenant());
+        model.addAttribute("albums", albumService.listForCurrentTenant());
+
+        model.addAttribute("photos", photos);
+        model.addAttribute("currentSort", sort);
+        model.addAttribute("searchQuery", null);
+        model.addAttribute("isSearchResult", false);
+        model.addAttribute("galleries", galleries);
+        model.addAttribute("currentGallery", currentGallery);
+        model.addAttribute("currentAlbum", currentGallery.getAlbum());
+        model.addAttribute("flowMode", false);
+
+        return "gallery";
+    }
+
+    @GetMapping("/{identifier}")
+    public String viewGalleryByIdentifier(
+        @PathVariable("identifier") String identifier,
+        @RequestParam(name = "sort", defaultValue = "uploadDate") String sort,
+        Model model
+    ) {
+        Gallery currentGallery = galleryService.getGalleryBySlugOrPublicId(identifier);
+        List<Photo> photos = galleryPhotoService.getPhotosInGallery(currentGallery.getId());
         List<Gallery> galleries = galleryService.getRootGalleries();
         model.addAttribute("categories", categoryService.listForCurrentTenant());
         model.addAttribute("albums", albumService.listForCurrentTenant());
@@ -88,6 +116,10 @@ public class GalleryController {
     public String handleFileUpload(
         @RequestParam("files") MultipartFile[] files,
         @RequestParam(name = "galleryId") Long galleryId,
+        @RequestParam(
+            name = "duplicateMode",
+            defaultValue = "cancel"
+        ) String duplicateMode,
         @RequestParam(value = "redirectTo", required = false) String redirectTo,
         RedirectAttributes redirectAttributes
     ) {
@@ -100,8 +132,11 @@ public class GalleryController {
         }
 
         int successCount = 0;
-        int duplicateCount = 0;
+        int skippedCount = 0;
         int errorCount = 0;
+
+        PhotoService.DuplicateHandling handling =
+            PhotoService.DuplicateHandling.fromString(duplicateMode);
 
         if (files != null) {
             for (MultipartFile file : files) {
@@ -110,7 +145,11 @@ public class GalleryController {
                 }
 
                 try {
-                    Photo saved = photoService.savePhoto(file);
+                    Photo saved = photoService.savePhotoForGallery(
+                        file,
+                        galleryId,
+                        handling
+                    );
                     successCount++;
 
                     // attach to selected gallery (mandatory now)
@@ -123,7 +162,7 @@ public class GalleryController {
                         errorCount++;
                     }
                 } catch (IllegalArgumentException ex) {
-                    duplicateCount++;
+                    skippedCount++;
                 } catch (RuntimeException ex) {
                     errorCount++;
                 }
@@ -134,10 +173,10 @@ public class GalleryController {
         if (successCount > 0) {
             msg.append(successCount).append(" photo(s) uploaded. ");
         }
-        if (duplicateCount > 0) {
+        if (skippedCount > 0) {
             msg
-                .append(duplicateCount)
-                .append(" duplicate or invalid file(s) skipped. ");
+                .append(skippedCount)
+                .append(" unsupported/duplicate file(s) skipped. ");
         }
         if (errorCount > 0) {
             msg.append(errorCount).append(" file(s) failed to upload.");
@@ -147,9 +186,18 @@ public class GalleryController {
         }
 
         redirectAttributes.addFlashAttribute("message", msg.toString().trim());
+        Gallery gallery = galleryService.getGallery(galleryId);
         String target = redirectTo != null
             ? safeRedirect(redirectTo).replace("{galleryId}", galleryId.toString())
-            : ("/gallery/" + galleryId);
+            : null;
+        if (target != null && target.contains("{gallerySlug}")) {
+            target = target.replace("{gallerySlug}", gallery.getSlug());
+        }
+        if (target == null) {
+            target = gallery.getSlug() != null
+                ? ("/" + gallery.getSlug())
+                : ("/gallery/" + galleryId);
+        }
         return "redirect:" + target;
     }
 
@@ -267,9 +315,14 @@ public class GalleryController {
                     "{galleryId}",
                     created.getId().toString()
                 );
+                if (target.contains("{gallerySlug}")) {
+                    target = target.replace("{gallerySlug}", created.getSlug());
+                }
                 return "redirect:" + target;
             }
-            return "redirect:/gallery/" + created.getId();
+            return created.getSlug() != null
+                ? ("redirect:/" + created.getSlug())
+                : ("redirect:/gallery/" + created.getId());
         } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute(
                 "message",
@@ -277,6 +330,78 @@ public class GalleryController {
             );
             return "redirect:/";
         }
+    }
+
+    @PutMapping("/galleries/{id}")
+    public String updateGallery(
+        @PathVariable("id") Long id,
+        @RequestParam("title") String title,
+        @RequestParam(value = "description", required = false) String description,
+        @RequestParam(value = "visibility", required = false) String visibility,
+        @RequestParam(value = "redirectTo", required = false) String redirectTo,
+        RedirectAttributes redirectAttributes
+    ) {
+        if (title == null || title.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Gallery title is required."
+            );
+            Gallery g = galleryService.getGallery(id);
+            return g.getSlug() != null
+                ? ("redirect:/" + g.getSlug())
+                : ("redirect:/gallery/" + id);
+        }
+
+        try {
+            galleryService.updateGallery(
+                id,
+                title.trim(),
+                description,
+                visibility
+            );
+            redirectAttributes.addFlashAttribute("message", "Gallery updated.");
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Failed to update gallery: " + ex.getMessage()
+            );
+        }
+
+        String target = redirectTo != null
+            ? safeRedirect(redirectTo).replace("{galleryId}", id.toString())
+            : null;
+        Gallery g = galleryService.getGallery(id);
+        if (target != null && target.contains("{gallerySlug}")) {
+            target = target.replace("{gallerySlug}", g.getSlug());
+        }
+        if (target == null) {
+            target = g.getSlug() != null ? ("/" + g.getSlug()) : ("/gallery/" + id);
+        }
+        return "redirect:" + target;
+    }
+
+    @DeleteMapping("/galleries/{id}")
+    public String deleteGallery(
+        @PathVariable("id") Long id,
+        @RequestParam(value = "redirectTo", required = false) String redirectTo,
+        RedirectAttributes redirectAttributes
+    ) {
+        try {
+            galleryService.deleteGallery(id);
+            redirectAttributes.addFlashAttribute("message", "Gallery deleted.");
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute(
+                "message",
+                "Failed to delete gallery: " + ex.getMessage()
+            );
+            Gallery g = galleryService.getGallery(id);
+            return g.getSlug() != null
+                ? ("redirect:/" + g.getSlug())
+                : ("redirect:/gallery/" + id);
+        }
+
+        String target = redirectTo != null ? safeRedirect(redirectTo) : "/dashboard";
+        return "redirect:" + target;
     }
 
     private static String safeRedirect(String redirectTo) {

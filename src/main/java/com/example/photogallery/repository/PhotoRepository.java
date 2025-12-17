@@ -108,4 +108,20 @@ public interface PhotoRepository extends JpaRepository<Photo, Long> {
     Optional<Photo> findByIdAndTenant(Long id, Tenant tenant);
 
     List<Photo> findAllByTenant(Tenant tenant);
+
+    @Query(
+        """
+        SELECT p FROM Photo p
+        WHERE p.tenant = :tenant
+          AND NOT EXISTS (
+            SELECT 1 FROM GalleryPhoto gp
+            WHERE gp.tenant = :tenant AND gp.photo = p
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM Gallery g
+            WHERE g.tenant = :tenant AND g.coverPhoto = p
+          )
+        """
+    )
+    List<Photo> findOrphanedByTenant(@Param("tenant") Tenant tenant);
 }

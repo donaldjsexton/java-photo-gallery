@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "galleries")
@@ -30,6 +31,12 @@ public class Gallery {
 
     @Column(nullable = false, length = 255)
     private String title;
+
+    @Column(name = "public_id", columnDefinition = "UUID")
+    private UUID publicId;
+
+    @Column(length = 255)
+    private String slug;
 
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -108,6 +115,22 @@ public class Gallery {
     public void setTitle(String title) {
         this.title = title;
         touchUpdatedAt();
+    }
+
+    public UUID getPublicId() {
+        return publicId;
+    }
+
+    public void setPublicId(UUID publicId) {
+        this.publicId = publicId;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
     }
 
     public String getDescription() {

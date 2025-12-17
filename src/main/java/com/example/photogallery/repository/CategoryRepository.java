@@ -9,4 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     List<Category> findByTenant(Tenant tenant);
     Optional<Category> findByTenantAndName(Tenant tenant, String name);
+    Optional<Category> findByIdAndTenant(Long id, Tenant tenant);
 }

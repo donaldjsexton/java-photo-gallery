@@ -2,6 +2,8 @@ package com.example.photogallery.service;
 
 import com.example.photogallery.model.Photo;
 import com.example.photogallery.model.Tenant;
+import com.example.photogallery.repository.GalleryPhotoRepository;
+import com.example.photogallery.repository.GalleryRepository;
 import com.example.photogallery.repository.PhotoRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
@@ -32,6 +34,12 @@ public class PhotoService {
 
     @Autowired
     private TenantService tenantService;
+
+    @Autowired
+    private GalleryPhotoRepository galleryPhotoRepository;
+
+    @Autowired
+    private GalleryRepository galleryRepository;
 
     @Value("${photo.gallery.upload.dir}")
     private String uploadDir;
@@ -88,12 +96,32 @@ public class PhotoService {
                 return;
             }
 
-            List<String> existingFiles;
+            List<String> existingFiles = new java.util.ArrayList<>();
+            // Legacy flat uploads (uploads/*.jpg)
             try (var stream = Files.list(uploadPath)) {
-                existingFiles = stream
-                    .filter(Files::isRegularFile)
-                    .map(path -> path.getFileName().toString())
-                    .collect(Collectors.toList());
+                existingFiles.addAll(
+                    stream
+                        .filter(Files::isRegularFile)
+                        .map(path -> path.getFileName().toString())
+                        .collect(Collectors.toList())
+                );
+            }
+
+            // Tenant-segmented uploads (uploads/{tenantSlug}/*.jpg)
+            Path tenantDir = uploadPath.resolve(tenant.getSlug());
+            if (Files.isDirectory(tenantDir)) {
+                try (var stream = Files.list(tenantDir)) {
+                    existingFiles.addAll(
+                        stream
+                            .filter(Files::isRegularFile)
+                            .map(path ->
+                                tenant.getSlug() +
+                                "/" +
+                                path.getFileName().toString()
+                            )
+                            .collect(Collectors.toList())
+                    );
+                }
             }
 
             List<String> dbFiles = getAllPhotos()
@@ -103,7 +131,7 @@ public class PhotoService {
 
             for (String fileName : existingFiles) {
                 if (!dbFiles.contains(fileName)) {
-                    Path filePath = uploadPath.resolve(fileName);
+                    Path filePath = photoStorageService.getFilePath(fileName);
                     byte[] fileBytes = Files.readAllBytes(filePath);
                     String fileHash = calculateFileHash(fileBytes);
 
@@ -148,15 +176,15 @@ public class PhotoService {
         String filename = file.getOriginalFilename();
         String contentType = file.getContentType();
 
-        if (
-            filename == null ||
-            !filename.toLowerCase().matches(".*\\.(jpg|jpeg|png|gif|bmp|webp)$")
-        ) {
-            throw new IllegalArgumentException("Invalid file type");
+        if (filename == null || !isAllowedImageExtension(filename)) {
+            throw new IllegalArgumentException("Unsupported file type");
         }
 
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IllegalArgumentException("Not an image file");
+        if (contentType == null || contentType.isBlank()) {
+            contentType = guessContentTypeFromExtension(filename);
+        }
+        if (contentType == null || contentType.isBlank()) {
+            contentType = "application/octet-stream";
         }
 
         byte[] fileBytes;
@@ -187,14 +215,15 @@ public class PhotoService {
                         // Replace file on disk for that existing photo
                         photoStorageService.deleteFile(existing.getFileName());
 
-                        String newStoredName =
+                        String newStoredKey = tenant.getSlug() +
+                            "/" +
                             UUID.randomUUID().toString() +
                             getCanonicalExtension(filename);
 
-                        photoStorageService.storeFile(fileBytes, newStoredName);
+                        photoStorageService.storeFile(fileBytes, newStoredKey);
 
                         existing.setOriginalName(filename);
-                        existing.setFileName(newStoredName);
+                        existing.setFileName(newStoredKey);
                         existing.setContentType(contentType);
                         existing.setSize(file.getSize());
                         existing.setFileHash(fileHash);
@@ -210,11 +239,14 @@ public class PhotoService {
             }
         }
 
-        String fileName =
-            UUID.randomUUID().toString() + getCanonicalExtension(filename);
+        String fileKey =
+            tenant.getSlug() +
+            "/" +
+            UUID.randomUUID().toString() +
+            getCanonicalExtension(filename);
 
         try {
-            photoStorageService.storeFile(fileBytes, fileName);
+            photoStorageService.storeFile(fileBytes, fileKey);
         } catch (Exception e) {
             throw new RuntimeException("Failed to store uploaded file", e);
         }
@@ -222,7 +254,7 @@ public class PhotoService {
         Photo photo = new Photo(
             tenant,
             filename,
-            fileName,
+            fileKey,
             contentType,
             file.getSize(),
             fileHash
@@ -237,6 +269,78 @@ public class PhotoService {
         }
 
         return photoRepository.save(photo);
+    }
+
+    /**
+     * Gallery-aware upload behavior: if the same file already exists in this tenant,
+     * reuse it and allow it to be added to a different gallery. "Duplicate" only
+     * applies when the photo is already present in the target gallery.
+     */
+    @Transactional
+    public Photo savePhotoForGallery(
+        MultipartFile file,
+        Long galleryId,
+        DuplicateHandling handling
+    ) {
+        Tenant tenant = resolveTenant();
+
+        String filename = file.getOriginalFilename();
+        String contentType = file.getContentType();
+
+        if (filename == null || !isAllowedImageExtension(filename)) {
+            throw new IllegalArgumentException("Unsupported file type");
+        }
+
+        if (contentType == null || contentType.isBlank()) {
+            contentType = guessContentTypeFromExtension(filename);
+        }
+        if (contentType == null || contentType.isBlank()) {
+            contentType = "application/octet-stream";
+        }
+
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read uploaded file bytes", e);
+        }
+
+        String fileHash = calculateFileHash(fileBytes);
+        Optional<Photo> existingPhotoOpt = photoRepository.findByTenantAndFileHash(
+            tenant,
+            fileHash
+        );
+
+        if (existingPhotoOpt.isPresent()) {
+            Photo existing = existingPhotoOpt.get();
+            boolean alreadyInGallery =
+                galleryPhotoRepository.existsByGalleryIdAndPhotoIdAndTenant(
+                    galleryId,
+                    existing.getId(),
+                    tenant
+                );
+
+            if (alreadyInGallery) {
+                switch (handling) {
+                    case CANCEL:
+                        throw new IllegalArgumentException(
+                            "Duplicate file (already in this gallery)"
+                        );
+                    case SKIP:
+                        throw new IllegalArgumentException(
+                            "Duplicate file (already in this gallery)"
+                        );
+                    case OVERWRITE:
+                        return existing;
+                }
+            }
+
+            // If the photo exists but isn't yet in this gallery, always reuse it.
+            return existing;
+        }
+
+        // New file: store it normally.
+        return savePhoto(file, handling);
     }
 
     // ---------------------------------------------------------
@@ -294,12 +398,15 @@ public class PhotoService {
         // Delete old file and store new one
         try {
             photoStorageService.deleteFile(existingPhoto.getFileName());
-            String newFileName =
-                UUID.randomUUID().toString() + getCanonicalExtension(filename);
-            photoStorageService.storeFile(fileBytes, newFileName);
+            String newFileKey =
+                tenant.getSlug() +
+                "/" +
+                UUID.randomUUID().toString() +
+                getCanonicalExtension(filename);
+            photoStorageService.storeFile(fileBytes, newFileKey);
 
             existingPhoto.setOriginalName(filename);
-            existingPhoto.setFileName(newFileName);
+            existingPhoto.setFileName(newFileKey);
             existingPhoto.setContentType(contentType);
             existingPhoto.setSize(file.getSize());
             existingPhoto.setFileHash(newFileHash);
@@ -372,13 +479,36 @@ public class PhotoService {
                 new NoSuchElementException("Photo not found with id " + id)
             );
 
+        deletePhotoInternal(tenant, p);
+    }
+
+    @Transactional
+    public int purgeOrphanedPhotosForCurrentTenant() {
+        Tenant tenant = resolveTenant();
+        List<Photo> orphaned = photoRepository.findOrphanedByTenant(tenant);
+        int deleted = 0;
+        for (Photo p : orphaned) {
+            deletePhotoInternal(tenant, p);
+            deleted++;
+        }
+        return deleted;
+    }
+
+    private void deletePhotoInternal(Tenant tenant, Photo p) {
+        // Clear DB references first to avoid FK violations (DB constraints may not be cascading)
+        galleryRepository.clearCoverPhotoReferences(tenant, p.getId());
+        galleryPhotoRepository.deleteByPhotoIdAndTenant(p.getId(), tenant);
+
         try {
             photoStorageService.deleteFile(p.getFileName());
+            if (p.getFileName() != null && p.getFileName().contains("/")) {
+                photoStorageService.deleteEmptyTenantDirectory(tenant.getSlug());
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to delete stored file", e);
         }
 
-        photoRepository.deleteById(id);
+        photoRepository.delete(p);
     }
 
     // ---------------------------------------------------------
@@ -395,7 +525,37 @@ public class PhotoService {
         return ext;
     }
 
+    private static boolean isAllowedImageExtension(String filename) {
+        String ext = getCanonicalExtension(filename);
+        return switch (ext) {
+            case ".jpg",
+                ".png",
+                ".gif",
+                ".bmp",
+                ".webp",
+                ".tiff",
+                ".heic",
+                ".heif" -> true;
+            default -> false;
+        };
+    }
+
+    private static String guessContentTypeFromExtension(String filename) {
+        String ext = getCanonicalExtension(filename);
+        return switch (ext) {
+            case ".jpg" -> "image/jpeg";
+            case ".png" -> "image/png";
+            case ".gif" -> "image/gif";
+            case ".bmp" -> "image/bmp";
+            case ".webp" -> "image/webp";
+            case ".tiff" -> "image/tiff";
+            case ".heic" -> "image/heic";
+            case ".heif" -> "image/heif";
+            default -> null;
+        };
+    }
+
     private Tenant resolveTenant() {
-        return tenantService.getDefaultTenant();
+        return tenantService.getCurrentTenant();
     }
 }

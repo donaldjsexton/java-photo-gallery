@@ -1,36 +1,9 @@
-server:
-  port: 8090
-  error:
-    include-message: always
+app:
+  security:
+    oidc:
+      enabled: true
 
 spring:
-  datasource:
-    url: jdbc:h2:file:./target/devdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-
-  servlet:
-    multipart:
-      # Per-file limit (individual photo upload)
-      max-file-size: ${PHOTO_GALLERY_MAX_FILE_SIZE:50MB}
-      # Total multipart request limit (multi-select form upload fallback)
-      max-request-size: ${PHOTO_GALLERY_MAX_REQUEST_SIZE:250MB}
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate.default_schema: public
-
-  flyway:
-    enabled: false
-
-  mvc:
-    hiddenmethod:
-      filter:
-        enabled: true
   security:
     oauth2:
       client:
@@ -48,15 +21,3 @@ spring:
             jwk-set-uri: "${KEYCLOAK_BASE_URL:http://localhost:8080}/realms/${KEYCLOAK_REALM:photo-gallery}/protocol/openid-connect/certs"
             user-info-uri: "${KEYCLOAK_BASE_URL:http://localhost:8080}/realms/${KEYCLOAK_REALM:photo-gallery}/protocol/openid-connect/userinfo"
             user-name-attribute: preferred_username
-
-photo:
-  gallery:
-    tenant:
-      mode: ${PHOTO_GALLERY_TENANT_MODE:per-user}
-    upload:
-      dir: uploads
-
-app:
-  security:
-    oidc:
-      enabled: ${APP_SECURITY_OIDC_ENABLED:true}

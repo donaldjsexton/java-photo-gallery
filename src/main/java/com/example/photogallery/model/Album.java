@@ -6,12 +6,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(
-    name = "albums",
-    uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "tenant_id", "name" }),
-    }
-)
+@Table(name = "albums")
 public class Album {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

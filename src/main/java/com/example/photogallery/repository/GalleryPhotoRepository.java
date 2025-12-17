@@ -26,5 +26,15 @@ public interface GalleryPhotoRepository
 
     Optional<GalleryPhoto> findByGalleryAndPhoto(Gallery gallery, Photo photo);
 
+    boolean existsByGalleryIdAndPhotoIdAndTenant(
+        Long galleryId,
+        Long photoId,
+        Tenant tenant
+    );
+
     void deleteByGalleryAndPhoto(Gallery gallery, Photo photo);
+
+    void deleteByPhotoIdAndTenant(Long photoId, Tenant tenant);
+
+    void deleteByGalleryIdAndTenant(Long galleryId, Tenant tenant);
 }

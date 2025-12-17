@@ -105,6 +105,6 @@ public class PhotoSearchService {
     }
 
     private Tenant currentTenant() {
-        return tenantService.getDefaultTenant();
+        return tenantService.getCurrentTenant();
     }
 }

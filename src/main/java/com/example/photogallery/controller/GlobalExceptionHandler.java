@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 
 @RestControllerAdvice(assignableTypes = { PhotoRestController.class })
 public class GlobalExceptionHandler {
@@ -86,6 +88,28 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
             body
         );
+    }
+
+    @ExceptionHandler(
+        { MaxUploadSizeExceededException.class, MultipartException.class }
+    )
+    public ResponseEntity<ErrorResponse> handleMultipartTooLarge(
+        Exception ex,
+        HttpServletRequest request
+    ) {
+        log.warn(
+            "413 Payload Too Large at {}: {}",
+            request.getRequestURI(),
+            ex.getMessage()
+        );
+
+        ErrorResponse body = ErrorResponse.of(
+            HttpStatus.PAYLOAD_TOO_LARGE,
+            "Payload Too Large",
+            "Upload too large. Try fewer photos at once, or increase PHOTO_GALLERY_MAX_REQUEST_SIZE.",
+            request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(body);
     }
 
     @ExceptionHandler(Exception.class)

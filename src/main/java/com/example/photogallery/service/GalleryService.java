@@ -3,12 +3,18 @@ package com.example.photogallery.service;
 import com.example.photogallery.model.Album;
 import com.example.photogallery.model.Gallery;
 import com.example.photogallery.model.Tenant;
+import com.example.photogallery.repository.GalleryPhotoRepository;
 import com.example.photogallery.repository.GalleryRepository;
+import com.example.photogallery.repository.ShareTokenRepository;
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
+import java.util.Locale;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class GalleryService {
@@ -21,6 +27,34 @@ public class GalleryService {
 
     @Autowired
     private AlbumService albumService;
+
+    @Autowired
+    private PhotoService photoService;
+
+    @Autowired
+    private GalleryPhotoRepository galleryPhotoRepository;
+
+    @Autowired
+    private ShareTokenRepository shareTokenRepository;
+
+    @PostConstruct
+    @Transactional
+    void backfillPublicIdsAndSlugs() {
+        for (Gallery g : galleryRepository.findAll()) {
+            boolean changed = false;
+            if (g.getPublicId() == null) {
+                g.setPublicId(UUID.randomUUID());
+                changed = true;
+            }
+            if (!StringUtils.hasText(g.getSlug())) {
+                g.setSlug(generateUniqueSlug(g.getTenant(), g.getTitle()));
+                changed = true;
+            }
+            if (changed) {
+                galleryRepository.save(g);
+            }
+        }
+    }
 
     // ---- Create ----
 
@@ -42,6 +76,8 @@ public class GalleryService {
         g.setTenant(tenant);
         g.setAlbum(album);
         g.setTitle(title);
+        g.setPublicId(UUID.randomUUID());
+        g.setSlug(generateUniqueSlug(tenant, title));
         g.setDescription(description);
         g.setVisibility("private"); // default
         return galleryRepository.save(g);
@@ -77,6 +113,8 @@ public class GalleryService {
         child.setAlbum(albumToUse);
         child.setParent(parent);
         child.setTitle(title);
+        child.setPublicId(UUID.randomUUID());
+        child.setSlug(generateUniqueSlug(tenant, title));
         child.setDescription(description);
         child.setVisibility("private");
 
@@ -121,6 +159,25 @@ public class GalleryService {
             .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
     }
 
+    public Gallery getGalleryBySlugOrPublicId(String identifier) {
+        Tenant tenant = resolveTenant();
+        if (!StringUtils.hasText(identifier)) {
+            throw new NoSuchElementException("Gallery not found");
+        }
+
+        String trimmed = identifier.trim();
+        try {
+            UUID publicId = UUID.fromString(trimmed);
+            return galleryRepository
+                .findByTenantAndPublicId(tenant, publicId)
+                .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
+        } catch (IllegalArgumentException ignored) {}
+
+        return galleryRepository
+            .findByTenantAndSlug(tenant, trimmed)
+            .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
+    }
+
     public List<Gallery> getRootGalleries() {
         return galleryRepository.findByTenantAndParentIsNull(resolveTenant());
     }
@@ -152,15 +209,65 @@ public class GalleryService {
 
     // ---- Delete ----
 
+    @Transactional
     public void deleteGallery(Long id) {
         Tenant tenant = resolveTenant();
-        if (!galleryRepository.findByIdAndTenant(id, tenant).isPresent()) {
-            throw new NoSuchElementException("Gallery not found");
+        Gallery gallery = galleryRepository
+            .findByIdAndTenant(id, tenant)
+            .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
+
+        // Move children to the root (and avoid FK constraints if DB lacks ON DELETE SET NULL)
+        List<Gallery> children = galleryRepository.findByTenantAndParentId(
+            tenant,
+            id
+        );
+        if (!children.isEmpty()) {
+            for (Gallery child : children) {
+                child.setParent(null);
+            }
+            galleryRepository.saveAll(children);
         }
-        galleryRepository.deleteById(id);
+
+        // Remove any dependent rows that could block deletion (DBs may not have cascading FKs)
+        shareTokenRepository.deleteByGallery(gallery);
+        galleryPhotoRepository.deleteByGalleryIdAndTenant(id, tenant);
+
+        galleryRepository.delete(gallery);
+
+        // If the gallery deletion orphaned any photos, purge them from DB + disk so they can be reuploaded.
+        photoService.purgeOrphanedPhotosForCurrentTenant();
     }
 
     private Tenant resolveTenant() {
-        return tenantService.getDefaultTenant();
+        return tenantService.getCurrentTenant();
+    }
+
+    private String generateUniqueSlug(Tenant tenant, String title) {
+        String base = slugify(title);
+        if (!StringUtils.hasText(base)) {
+            base = "gallery";
+        }
+
+        String candidate = base;
+        int i = 2;
+        while (galleryRepository.existsByTenantAndSlug(tenant, candidate)) {
+            candidate = base + "-" + i;
+            i++;
+            if (i > 10_000) {
+                candidate = base + "-" + UUID.randomUUID().toString().substring(0, 8);
+                break;
+            }
+        }
+        return candidate;
+    }
+
+    private static String slugify(String input) {
+        if (!StringUtils.hasText(input)) return null;
+        String normalized = input.trim().toLowerCase(Locale.ROOT);
+        String slug =
+            normalized.replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+|-+$)", "");
+        if (!StringUtils.hasText(slug)) return null;
+        if (slug.length() > 80) return slug.substring(0, 80).replaceAll("-+$", "");
+        return slug;
     }
 }
