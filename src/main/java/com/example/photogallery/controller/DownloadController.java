@@ -1,0 +1,134 @@
+package com.example.photogallery.controller;
+
+import com.example.photogallery.model.Album;
+import com.example.photogallery.model.Photo;
+import com.example.photogallery.model.Tenant;
+import com.example.photogallery.repository.PhotoRepository;
+import com.example.photogallery.service.AlbumService;
+import com.example.photogallery.service.DownloadService;
+import com.example.photogallery.service.PhotoVariant;
+import com.example.photogallery.service.TenantService;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.NoSuchElementException;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+
+@Controller
+public class DownloadController {
+
+    private final TenantService tenantService;
+    private final AlbumService albumService;
+    private final PhotoRepository photoRepository;
+    private final DownloadService downloadService;
+
+    public DownloadController(
+        TenantService tenantService,
+        AlbumService albumService,
+        PhotoRepository photoRepository,
+        DownloadService downloadService
+    ) {
+        this.tenantService = tenantService;
+        this.albumService = albumService;
+        this.photoRepository = photoRepository;
+        this.downloadService = downloadService;
+    }
+
+    @GetMapping("/photos/{photoId}/image")
+    public ResponseEntity<FileSystemResource> viewPhoto(
+        @PathVariable("photoId") Long photoId,
+        @RequestParam(value = "variant", required = false) String variant
+    ) throws IOException {
+        Tenant tenant = tenantService.getCurrentTenant();
+        Photo photo = photoRepository
+            .findByIdAndTenant(photoId, tenant)
+            .orElseThrow(() -> new NoSuchElementException("Photo not found"));
+
+        PhotoVariant v = PhotoVariant.fromString(variant);
+        var resolved = downloadService.resolveForDownload(tenant, photo, v);
+        FileSystemResource resource = new FileSystemResource(resolved.path());
+        if (!resource.exists()) {
+            throw new NoSuchElementException("Photo file not found");
+        }
+
+        MediaType mediaType = resolved.mediaType();
+        String dispositionType = downloadService.isInlineSafe(mediaType)
+            ? "inline"
+            : "attachment";
+
+        return ResponseEntity
+            .ok()
+            .contentType(mediaType)
+            .cacheControl(CacheControl.noCache())
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                dispositionType + "; filename=\"" + resolved.fileName() + "\""
+            )
+            .body(resource);
+    }
+
+    @GetMapping("/photos/{photoId}/download")
+    public ResponseEntity<FileSystemResource> downloadPhoto(
+        @PathVariable("photoId") Long photoId,
+        @RequestParam(value = "variant", required = false) String variant
+    ) throws IOException {
+        Tenant tenant = tenantService.getCurrentTenant();
+        Photo photo = photoRepository
+            .findByIdAndTenant(photoId, tenant)
+            .orElseThrow(() -> new NoSuchElementException("Photo not found"));
+
+        PhotoVariant v = PhotoVariant.fromString(variant);
+        var resolved = downloadService.resolveForDownload(tenant, photo, v);
+        FileSystemResource resource = new FileSystemResource(resolved.path());
+        if (!resource.exists()) {
+            throw new NoSuchElementException("Photo file not found");
+        }
+
+        return ResponseEntity
+            .ok()
+            .contentType(resolved.mediaType())
+            .cacheControl(CacheControl.noCache())
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + resolved.fileName() + "\""
+            )
+            .body(resource);
+    }
+
+    @GetMapping("/albums/{albumId}/download.zip")
+    public ResponseEntity<StreamingResponseBody> downloadAlbumZip(
+        @PathVariable("albumId") Long albumId,
+        @RequestParam(value = "variant", required = false) String variant
+    ) {
+        Album album = albumService.getById(albumId);
+        Tenant tenant = tenantService.getCurrentTenant();
+        PhotoVariant v = PhotoVariant.fromString(variant);
+
+        String fileName = downloadService.buildAlbumZipFileName(album, v);
+        StreamingResponseBody body = out -> {
+            try {
+                downloadService.writeAlbumZip(out, tenant, album, v);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        };
+
+        return ResponseEntity
+            .ok()
+            .contentType(MediaType.parseMediaType("application/zip"))
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + fileName + "\""
+            )
+            .cacheControl(CacheControl.noCache())
+            .body(body);
+    }
+}

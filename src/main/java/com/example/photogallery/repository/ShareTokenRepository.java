@@ -1,17 +1,32 @@
 package com.example.photogallery.repository;
 
-import com.example.photogallery.model.Gallery;
+import com.example.photogallery.model.Album;
 import com.example.photogallery.model.ShareToken;
+import com.example.photogallery.model.Tenant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ShareTokenRepository extends JpaRepository<ShareToken, UUID> {
-    Optional<ShareToken> findByIdAndExpiresAtAfter(UUID id, LocalDateTime now);
+    @Query(
+        """
+        SELECT st FROM ShareToken st
+        WHERE st.id = :id
+          AND (st.expiresAt IS NULL OR st.expiresAt > :now)
+        """
+    )
+    Optional<ShareToken> findValidById(
+        @Param("id") UUID id,
+        @Param("now") LocalDateTime now
+    );
 
-    List<ShareToken> findByGallery(Gallery gallery);
+    Optional<ShareToken> findByIdAndTenant(UUID id, Tenant tenant);
 
-    void deleteByGallery(Gallery gallery);
+    List<ShareToken> findByAlbum(Album album);
+
+    void deleteByAlbum(Album album);
 }

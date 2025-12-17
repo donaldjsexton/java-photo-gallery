@@ -543,13 +543,14 @@ details.manage form {
 
 .gallery-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 280px));
     gap: 12px;
+    justify-content: start;
 }
 .tile {
     background: var(--card);
     border: 1px solid var(--stroke);
-    border-radius: 14px;
+    border-radius: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -618,7 +619,7 @@ details.manage form {
 
 /* --- Masonry gallery (client-facing) --- */
 .masonry {
-    column-count: 4;
+    column-width: 280px;
     column-gap: 12px;
 }
 .masonry .tile {
@@ -656,7 +657,7 @@ details.manage form {
     height: auto;
     max-height: 80vh;
     object-fit: contain;
-    border-radius: 14px;
+    border-radius: 0;
     border: 1px solid rgba(255, 255, 255, 0.18);
     background: #ffffff;
 }
@@ -681,7 +682,7 @@ details.manage form {
 
 @media (max-width: 1200px) {
     .masonry {
-        column-count: 3;
+        column-width: 260px;
     }
 }
 @media (max-width: 900px) {
@@ -692,7 +693,7 @@ details.manage form {
         grid-template-columns: 1fr;
     }
     .masonry {
-        column-count: 2;
+        column-width: 220px;
     }
     .hero-footer {
         flex-direction: column;
@@ -711,6 +712,6 @@ details.manage form {
         align-items: flex-start;
     }
     .masonry {
-        column-count: 1;
+        column-width: 100%;
     }
 }

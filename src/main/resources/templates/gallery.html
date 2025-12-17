@@ -378,9 +378,11 @@
                         </div>
 
                         <div class="stack" style="align-items: flex-end;">
-                            <a class="pill ghost" th:href="@{/dashboard}">
-                                Back to dashboard
-                            </a>
+                            <a
+                                class="pill ghost"
+                                th:href="${currentAlbum != null ? '/albums/' + currentAlbum.id : '/dashboard'}"
+                                th:text="${currentAlbum != null ? 'Back to album' : 'Back to dashboard'}"
+                            ></a>
                             <div class="sorter" th:if="${currentGallery != null}">
                                 <label class="muted small">Sort</label>
                                 <select
@@ -473,20 +475,11 @@
                                     </label>
                                     <label>
                                         <span>Visibility</span>
-                                        <select name="visibility">
-                                            <option
-                                                value="private"
-                                                th:selected="${currentGallery.visibility == 'private'}"
-                                            >
-                                                Private
-                                            </option>
-                                            <option
-                                                value="public"
-                                                th:selected="${currentGallery.visibility == 'public'}"
-                                            >
-                                                Public
-                                            </option>
-                                        </select>
+                                        <input
+                                            type="text"
+                                            readonly
+                                            th:value="${currentAlbum != null ? currentAlbum.visibility : currentGallery.visibility}"
+                                        />
                                     </label>
                                     <div class="actions">
                                         <button type="submit">
@@ -522,11 +515,11 @@
                     <div
                         class="tile"
                         th:each="photo : ${photos}"
-                        th:attr="data-full=@{'/uploads/' + ${photo.fileName}},data-title=${photo.originalName}"
+                        th:attr="data-full=@{/photos/{id}/image(id=${photo.id})},data-title=${photo.originalName},data-photo-id=${photo.id}"
                     >
                         <div class="thumb">
                             <img
-                                th:src="@{'/uploads/' + ${photo.fileName}}"
+                                th:src="@{/photos/{id}/image(id=${photo.id})}"
                                 th:alt="${photo.originalName}"
                                 onerror="
                                     this.src = '/images/placeholder.jpg'
@@ -608,6 +601,12 @@
             <div class="lightbox-inner">
                 <div class="lightbox-bar">
                     <div class="lightbox-title" id="lightboxTitle"></div>
+                    <a class="pill ghost" id="lightboxDownloadWeb" href="#" download>
+                        Download web
+                    </a>
+                    <a class="pill ghost" id="lightboxDownloadOriginal" href="#" download>
+                        Download original
+                    </a>
                     <button class="lightbox-close" id="lightboxClose">
                         Close
                     </button>
@@ -623,17 +622,27 @@
                 const img = document.getElementById('lightboxImg');
                 const title = document.getElementById('lightboxTitle');
                 const closeBtn = document.getElementById('lightboxClose');
+                const dlWeb = document.getElementById('lightboxDownloadWeb');
+                const dlOrig = document.getElementById('lightboxDownloadOriginal');
                 if (!grid || !box || !img) return;
 
-                function openLightbox(src, caption) {
+                function openLightbox(src, caption, photoId) {
                     img.src = src;
                     title.textContent = caption || '';
+                    if (dlWeb && photoId) {
+                        dlWeb.href = `/photos/${photoId}/download?variant=web`;
+                    }
+                    if (dlOrig && photoId) {
+                        dlOrig.href = `/photos/${photoId}/download?variant=original`;
+                    }
                     box.classList.add('open');
                     document.body.style.overflow = 'hidden';
                 }
                 function closeLightbox() {
                     box.classList.remove('open');
                     img.src = '';
+                    if (dlWeb) dlWeb.href = '#';
+                    if (dlOrig) dlOrig.href = '#';
                     document.body.style.overflow = '';
                 }
 
@@ -642,7 +651,8 @@
                     if (!tile) return;
                     const full = tile.getAttribute('data-full');
                     if (!full) return;
-                    openLightbox(full, tile.getAttribute('data-title'));
+                    const pid = tile.getAttribute('data-photo-id');
+                    openLightbox(full, tile.getAttribute('data-title'), pid);
                 });
 
                 closeBtn && closeBtn.addEventListener('click', closeLightbox);

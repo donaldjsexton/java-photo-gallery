@@ -1,6 +1,7 @@
 package com.example.photogallery.service;
 
 import com.example.photogallery.model.Album;
+import com.example.photogallery.model.AlbumVisibility;
 import com.example.photogallery.model.Category;
 import com.example.photogallery.model.Tenant;
 import com.example.photogallery.repository.AlbumRepository;
@@ -9,6 +10,9 @@ import com.example.photogallery.repository.GalleryRepository;
 import com.example.photogallery.repository.ShareTokenRepository;
 import java.util.List;
 import java.util.NoSuchElementException;
+import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Sort;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -45,10 +49,71 @@ public class AlbumService {
         return albumRepository.findByTenant(currentTenant());
     }
 
+    public List<Album> searchForDashboard(
+        Long categoryId,
+        String sortKey,
+        String query
+    ) {
+        Tenant tenant = currentTenant();
+        Category category = categoryId != null
+            ? categoryService.getById(categoryId)
+            : null;
+
+        String normalizedQuery = StringUtils.hasText(query) ? query.trim() : null;
+
+        Sort sort = resolveDashboardSort(sortKey);
+        return albumRepository.searchForTenant(tenant, category, normalizedQuery, sort);
+    }
+
     public Album getById(Long id) {
         return albumRepository
             .findByIdAndTenant(id, currentTenant())
             .orElseThrow(() -> new NoSuchElementException("Album not found"));
+    }
+
+    @Transactional
+    public Album updateAlbum(
+        Long id,
+        Long categoryId,
+        String name,
+        String description,
+        String visibility
+    ) {
+        if (!StringUtils.hasText(name)) {
+            throw new IllegalArgumentException("Album name is required.");
+        }
+
+        Album album = getById(id);
+        AlbumVisibility previousVisibility = album.getVisibility();
+        Category category = categoryId != null
+            ? categoryService.getById(categoryId)
+            : null;
+
+        AlbumVisibility parsedVisibility = parseVisibility(visibility);
+        album.setCategory(category);
+        album.setName(name.trim());
+        album.setDescription(description != null ? description.trim() : null);
+        album.setVisibility(parsedVisibility);
+        Album saved = albumRepository.save(album);
+
+        if (previousVisibility != parsedVisibility) {
+            galleryRepository.updateVisibilityForAlbum(
+                currentTenant(),
+                saved,
+                galleryVisibilityForAlbum(parsedVisibility)
+            );
+        }
+
+        return saved;
+    }
+
+    public Album updateAlbum(
+        Long id,
+        Long categoryId,
+        String name,
+        String description
+    ) {
+        return updateAlbum(id, categoryId, name, description, null);
     }
 
     public Album getDefaultAlbumForTenant() {
@@ -56,16 +121,25 @@ public class AlbumService {
         Category defaultCategory = categoryService.getOrCreateDefaultCategory();
         return albumRepository
             .findFirstByTenantAndNameOrderByIdAsc(tenant, "Default Album")
-            .orElseGet(() ->
-                albumRepository.save(
-                    new Album(
-                        tenant,
-                        defaultCategory,
-                        "Default Album",
-                        "Auto-created album"
-                    )
-                )
-            );
+            .orElseGet(() -> {
+                try {
+                    return albumRepository.save(
+                        new Album(
+                            tenant,
+                            defaultCategory,
+                            "Default Album",
+                            "Auto-created album"
+                        )
+                    );
+                } catch (DataIntegrityViolationException e) {
+                    return albumRepository
+                        .findFirstByTenantAndNameOrderByIdAsc(
+                            tenant,
+                            "Default Album"
+                        )
+                        .orElseThrow(() -> e);
+                }
+            });
     }
 
     public Album create(Category category, String name, String description) {
@@ -77,6 +151,7 @@ public class AlbumService {
         Tenant tenant = currentTenant();
         String trimmedDescription = description != null ? description.trim() : null;
         Album album = new Album(tenant, category, trimmedName, trimmedDescription);
+        album.setVisibility(AlbumVisibility.PRIVATE);
         return albumRepository.save(album);
     }
 
@@ -118,12 +193,12 @@ public class AlbumService {
             galleryRepository.saveAll(galleries);
 
             for (var g : galleries) {
-                shareTokenRepository.deleteByGallery(g);
                 galleryPhotoRepository.deleteByGalleryIdAndTenant(g.getId(), tenant);
             }
             galleryRepository.deleteAll(galleries);
         }
 
+        shareTokenRepository.deleteByAlbum(album);
         albumRepository.delete(album);
 
         // Album deletion may orphan photos; purge them from DB + disk so they can be reuploaded.
@@ -132,5 +207,45 @@ public class AlbumService {
 
     private Tenant currentTenant() {
         return tenantService.getCurrentTenant();
+    }
+
+    private static Sort resolveDashboardSort(String sortKey) {
+        if (!StringUtils.hasText(sortKey)) {
+            return Sort.by(
+                Sort.Order.desc("createdAt"),
+                Sort.Order.desc("id")
+            );
+        }
+
+        return switch (sortKey.trim()) {
+            case "title" -> Sort.by(
+                Sort.Order.asc("name").ignoreCase(),
+                Sort.Order.desc("id")
+            );
+            case "createdAt" -> Sort.by(
+                Sort.Order.desc("createdAt"),
+                Sort.Order.desc("id")
+            );
+            default -> Sort.by(
+                Sort.Order.desc("createdAt"),
+                Sort.Order.desc("id")
+            );
+        };
+    }
+
+    private static AlbumVisibility parseVisibility(String visibility) {
+        if (!StringUtils.hasText(visibility)) {
+            return AlbumVisibility.PRIVATE;
+        }
+        String normalized = visibility.trim().toLowerCase();
+        return switch (normalized) {
+            case "public" -> AlbumVisibility.PUBLIC;
+            case "private" -> AlbumVisibility.PRIVATE;
+            default -> AlbumVisibility.PRIVATE;
+        };
+    }
+
+    private static String galleryVisibilityForAlbum(AlbumVisibility visibility) {
+        return visibility == AlbumVisibility.PUBLIC ? "public" : "private";
     }
 }

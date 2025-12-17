@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title
+            th:text="${currentGallery != null ? currentGallery.title + ' — Shared gallery' : 'Shared gallery'}"
+        ></title>
+        <link rel="stylesheet" th:href="@{/css/style.css}" />
+    </head>
+    <body class="page">
+        <div class="bg-mesh"></div>
+        <div class="shell">
+            <main class="workbench">
+                <section class="column main">
+                    <article class="card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Shared gallery</p>
+                                <h2
+                                    th:text="${currentGallery != null ? currentGallery.title : 'Gallery'}"
+                                ></h2>
+                                <p
+                                    class="muted small"
+                                    th:if="${currentAlbum != null}"
+                                >
+                                    <a
+                                        class="pill ghost"
+                                        th:href="@{/share/{tokenId}(tokenId=${shareTokenId})}"
+                                    >
+                                        Back to album
+                                    </a>
+                                </p>
+                            </div>
+                            <span class="pill ghost">Read-only</span>
+                        </div>
+                    </article>
+
+                    <div
+                        class="masonry"
+                        id="masonryGrid"
+                        th:if="${currentGallery != null}"
+                        th:attr="data-token-id=${shareTokenId}"
+                    >
+                        <div
+                            class="tile"
+                            th:each="photo : ${photos}"
+                            th:attr="data-full=@{/share/{tokenId}/photo/{photoId}(tokenId=${shareTokenId}, photoId=${photo.id})},data-title=${photo.originalName},data-photo-id=${photo.id}"
+                        >
+                            <div class="thumb">
+                                <img
+                                    th:src="@{/share/{tokenId}/photo/{photoId}(tokenId=${shareTokenId}, photoId=${photo.id})}"
+                                    th:alt="${photo.originalName}"
+                                    onerror="this.style.display='none'"
+                                />
+                                <div class="overlay">
+                                    <div>
+                                        <div
+                                            class="muted small"
+                                            th:if="${photo.camera}"
+                                            th:text="${photo.camera}"
+                                        ></div>
+                                        <div
+                                            class="muted small"
+                                            th:if="${photo.dateTaken}"
+                                            th:text="${photo.dateTaken}"
+                                        ></div>
+                                    </div>
+                                    <span class="pill ghost">View</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <article class="card text-center muted" th:if="${photos == null or photos.isEmpty()}">
+                        No photos yet.
+                    </article>
+                </section>
+            </main>
+        </div>
+
+        <div class="lightbox" id="lightbox">
+            <div class="lightbox-inner">
+                <div class="lightbox-bar">
+                    <div class="lightbox-title" id="lightboxTitle"></div>
+                    <a class="pill ghost" id="lightboxDownloadWeb" href="#" download>Download web</a>
+                    <a class="pill ghost" id="lightboxDownloadOriginal" href="#" download>Download original</a>
+                    <button class="lightbox-close" id="lightboxClose">✕</button>
+                </div>
+                <img class="lightbox-img" id="lightboxImg" alt="" />
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                const grid = document.getElementById('masonryGrid');
+                const box = document.getElementById('lightbox');
+                const img = document.getElementById('lightboxImg');
+                const title = document.getElementById('lightboxTitle');
+                const closeBtn = document.getElementById('lightboxClose');
+                const dlWeb = document.getElementById('lightboxDownloadWeb');
+                const dlOrig = document.getElementById('lightboxDownloadOriginal');
+                if (!grid || !box || !img) return;
+
+                const tokenId = grid.getAttribute('data-token-id');
+
+                function openLightbox(src, caption, photoId) {
+                    img.src = src;
+                    title.textContent = caption || '';
+                    if (tokenId && photoId && dlWeb) {
+                        dlWeb.href = `/share/${tokenId}/photo/${photoId}/download?variant=web`;
+                    }
+                    if (tokenId && photoId && dlOrig) {
+                        dlOrig.href = `/share/${tokenId}/photo/${photoId}/download?variant=original`;
+                    }
+                    box.classList.add('open');
+                    document.body.style.overflow = 'hidden';
+                }
+                function closeLightbox() {
+                    box.classList.remove('open');
+                    img.src = '';
+                    if (dlWeb) dlWeb.href = '#';
+                    if (dlOrig) dlOrig.href = '#';
+                    document.body.style.overflow = '';
+                }
+
+                grid.addEventListener('click', (e) => {
+                    const tile = e.target.closest('.tile');
+                    if (!tile) return;
+                    const full = tile.getAttribute('data-full');
+                    if (!full) return;
+                    const pid = tile.getAttribute('data-photo-id');
+                    openLightbox(full, tile.getAttribute('data-title'), pid);
+                });
+
+                closeBtn && closeBtn.addEventListener('click', closeLightbox);
+                box.addEventListener('click', (e) => {
+                    if (e.target === box) closeLightbox();
+                });
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') closeLightbox();
+                });
+            })();
+        </script>
+    </body>
+</html>

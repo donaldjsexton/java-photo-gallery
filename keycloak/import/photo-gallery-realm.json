@@ -18,7 +18,10 @@
       ],
       "webOrigins": [
         "http://localhost:8090"
-      ]
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8090/*"
+      }
     }
   ]
 }

@@ -41,7 +41,7 @@ In the Keycloak admin UI:
 - Users → Create user
 - Set a password (Credentials tab)
 
-## 3) Run the app with OIDC enabled
+## 3) Run the app
 
 Set env vars (or put them into your IDE run config):
 
@@ -52,12 +52,7 @@ export KEYCLOAK_CLIENT_ID=photo-gallery
 export KEYCLOAK_CLIENT_SECRET=change-me
 ```
 
-Then start the app and visit `http://localhost:8090/login` → “Continue with Keycloak”.
+Then start the app and visit `http://localhost:8090/login`.
 
-## Local auth fallback (no Keycloak)
-
-Run the app with:
-
-```bash
---spring.profiles.active=local
-```
+If you see “Invalid redirect uri” on sign out:
+- In Keycloak admin → Clients → `photo-gallery` → Logout settings, add `http://localhost:8090/*` (or at least `http://localhost:8090/login?logout`) to “Valid post logout redirect URIs”.

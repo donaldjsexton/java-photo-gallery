@@ -1,8 +1,0 @@
-app:
-  security:
-    oidc:
-      enabled: false
-    local:
-      username: ${APP_SECURITY_LOCAL_USERNAME:admin}
-      password: ${APP_SECURITY_LOCAL_PASSWORD:admin}
-

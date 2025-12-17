@@ -32,6 +32,10 @@ public class Album {
     @Column(nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private AlbumVisibility visibility = AlbumVisibility.PRIVATE;
+
     @OneToMany(mappedBy = "album", fetch = FetchType.LAZY)
     private Set<Gallery> galleries = new HashSet<>();
 
@@ -42,6 +46,7 @@ public class Album {
         this.category = category;
         this.name = name;
         this.description = description;
+        this.visibility = AlbumVisibility.PRIVATE;
     }
 
     public Long getId() {
@@ -96,6 +101,15 @@ public class Album {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public AlbumVisibility getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(AlbumVisibility visibility) {
+        this.visibility = visibility != null ? visibility : AlbumVisibility.PRIVATE;
+        touchUpdatedAt();
     }
 
     public Set<Gallery> getGalleries() {

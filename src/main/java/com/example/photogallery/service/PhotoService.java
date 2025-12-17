@@ -10,6 +10,7 @@ import jakarta.transaction.Transactional;
 import java.nio.file.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -43,6 +44,8 @@ public class PhotoService {
 
     @Value("${photo.gallery.upload.dir}")
     private String uploadDir;
+
+    private static final String TENANT_SLUG_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
 
     //Duplicate Enum
     public enum DuplicateHandling {
@@ -90,76 +93,118 @@ public class PhotoService {
     @PostConstruct
     public void initializeExistingImages() {
         try {
-            Tenant tenant = resolveTenant();
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 return;
             }
 
-            List<String> existingFiles = new java.util.ArrayList<>();
-            // Legacy flat uploads (uploads/*.jpg)
+            // Legacy flat uploads (uploads/*.jpg) belong to the default tenant.
+            Tenant defaultTenant = tenantService.getDefaultTenant();
+            importMissingFilesForTenant(
+                defaultTenant,
+                listFlatUploadFiles(uploadPath)
+            );
+
+            // Tenant-segmented uploads (uploads/{tenantSlug}/*.jpg) belong to that tenant.
             try (var stream = Files.list(uploadPath)) {
-                existingFiles.addAll(
-                    stream
-                        .filter(Files::isRegularFile)
-                        .map(path -> path.getFileName().toString())
-                        .collect(Collectors.toList())
-                );
-            }
-
-            // Tenant-segmented uploads (uploads/{tenantSlug}/*.jpg)
-            Path tenantDir = uploadPath.resolve(tenant.getSlug());
-            if (Files.isDirectory(tenantDir)) {
-                try (var stream = Files.list(tenantDir)) {
-                    existingFiles.addAll(
-                        stream
-                            .filter(Files::isRegularFile)
-                            .map(path ->
-                                tenant.getSlug() +
-                                "/" +
-                                path.getFileName().toString()
-                            )
-                            .collect(Collectors.toList())
-                    );
-                }
-            }
-
-            List<String> dbFiles = getAllPhotos()
-                .stream()
-                .map(Photo::getFileName)
-                .collect(Collectors.toList());
-
-            for (String fileName : existingFiles) {
-                if (!dbFiles.contains(fileName)) {
-                    Path filePath = photoStorageService.getFilePath(fileName);
-                    byte[] fileBytes = Files.readAllBytes(filePath);
-                    String fileHash = calculateFileHash(fileBytes);
-
-                    // Skip if hash already known to DB
-                    if (
-                        photoRepository
-                            .findByTenantAndFileHash(tenant, fileHash)
-                            .isPresent()
-                    ) {
+                for (Path p : stream.toList()) {
+                    if (!Files.isDirectory(p)) continue;
+                    String slug = p.getFileName().toString();
+                    if (slug == null || !slug.matches(TENANT_SLUG_PATTERN)) {
                         continue;
                     }
 
-                    Photo photo = new Photo(
+                    Tenant tenant = tenantService.getOrCreateBySlug(slug, slug);
+                    importMissingFilesForTenant(
                         tenant,
-                        fileName,
-                        fileName,
-                        "application/octet-stream",
-                        Files.size(filePath),
-                        fileHash
+                        listTenantUploadFiles(slug, p)
                     );
-
-                    photoRepository.save(photo);
                 }
             }
         } catch (Exception e) {
             System.err.println(
                 "Error initializing existing images: " + e.getMessage()
             );
+        }
+    }
+
+    private List<String> listFlatUploadFiles(Path uploadPath) throws Exception {
+        try (var stream = Files.list(uploadPath)) {
+            return stream
+                .filter(Files::isRegularFile)
+                .map(path -> path.getFileName().toString())
+                .filter(PhotoService::isAllowedImageExtension)
+                .collect(Collectors.toList());
+        }
+    }
+
+    private List<String> listTenantUploadFiles(String tenantSlug, Path tenantDir)
+        throws Exception {
+        if (!Files.isDirectory(tenantDir)) return List.of();
+        try (var stream = Files.list(tenantDir)) {
+            return stream
+                .filter(Files::isRegularFile)
+                .map(path -> tenantSlug + "/" + path.getFileName().toString())
+                .filter(key -> {
+                    int slash = key.lastIndexOf('/');
+                    String leaf = slash >= 0 ? key.substring(slash + 1) : key;
+                    return isAllowedImageExtension(leaf);
+                })
+                .collect(Collectors.toList());
+        }
+    }
+
+    private void importMissingFilesForTenant(Tenant tenant, List<String> storedKeys)
+        throws Exception {
+        if (storedKeys == null || storedKeys.isEmpty()) return;
+
+        HashSet<String> dbFiles = new HashSet<>(
+            photoRepository
+                .findAllByTenant(tenant)
+                .stream()
+                .map(Photo::getFileName)
+                .collect(Collectors.toList())
+        );
+
+        for (String storedKey : storedKeys) {
+            if (dbFiles.contains(storedKey)) {
+                continue;
+            }
+
+            Path filePath = photoStorageService.getFilePath(storedKey);
+            byte[] fileBytes = Files.readAllBytes(filePath);
+            String fileHash = calculateFileHash(fileBytes);
+
+            if (photoRepository.findByTenantAndFileHash(tenant, fileHash).isPresent()) {
+                continue;
+            }
+
+            String leafName = storedKey.contains("/")
+                ? storedKey.substring(storedKey.lastIndexOf('/') + 1)
+                : storedKey;
+            String contentType = guessContentTypeFromExtension(leafName);
+            if (contentType == null || contentType.isBlank()) {
+                contentType = "application/octet-stream";
+            }
+
+            Photo photo = new Photo(
+                tenant,
+                leafName,
+                storedKey,
+                contentType,
+                Files.size(filePath),
+                fileHash
+            );
+
+            try {
+                exifService.extractAndSetExifData(photo, fileBytes);
+            } catch (Exception ex) {
+                System.err.println(
+                    "EXIF extraction failed for " + storedKey + ": " + ex.getMessage()
+                );
+            }
+
+            photoRepository.save(photo);
         }
     }
 
@@ -500,12 +545,19 @@ public class PhotoService {
         galleryPhotoRepository.deleteByPhotoIdAndTenant(p.getId(), tenant);
 
         try {
-            photoStorageService.deleteFile(p.getFileName());
-            if (p.getFileName() != null && p.getFileName().contains("/")) {
-                photoStorageService.deleteEmptyTenantDirectory(tenant.getSlug());
+            if (p.getFileName() != null) {
+                photoStorageService.deleteFile(p.getFileName());
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to delete stored file", e);
+        }
+
+        try {
+            if (p.getFileName() != null && p.getFileName().contains("/")) {
+                photoStorageService.deleteEmptyTenantDirectory(tenant.getSlug());
+            }
+        } catch (Exception ignored) {
+            // Best-effort cleanup: concurrent uploads/deletes can race directory creation.
         }
 
         photoRepository.delete(p);

@@ -17,8 +17,7 @@
                                 <p class="eyebrow">Studio</p>
                                 <h2>Sign in</h2>
                                 <p class="muted small">
-                                    <span th:if="${oidcEnabled}">Continue with Keycloak to sign in.</span>
-                                    <span th:if="${!oidcEnabled}">Use your admin credentials to continue.</span>
+                                    Login to continue.
                                 </p>
                             </div>
                         </div>
@@ -35,46 +34,22 @@
                         <div
                             class="actions"
                             style="justify-content: flex-start;"
-                            th:if="${oidcEnabled}"
                         >
-                            <a class="pill" th:href="@{/oauth2/authorization/keycloak}">
-                                Continue with Keycloak
+                            <a
+                                class="pill"
+                                th:if="${param.logout}"
+                                th:href="@{/login(prompt='login')}"
+                            >
+                                Login
+                            </a>
+                            <a
+                                class="pill"
+                                th:unless="${param.logout}"
+                                th:href="@{/login}"
+                            >
+                                Login
                             </a>
                         </div>
-
-                        <form
-                            class="form stacked"
-                            th:if="${!oidcEnabled}"
-                            th:action="@{/login}"
-                            method="post"
-                        >
-                            <input
-                                type="hidden"
-                                th:name="${_csrf.parameterName}"
-                                th:value="${_csrf.token}"
-                            />
-                            <label>
-                                <span>Username</span>
-                                <input
-                                    type="text"
-                                    name="username"
-                                    autocomplete="username"
-                                    required
-                                />
-                            </label>
-                            <label>
-                                <span>Password</span>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    autocomplete="current-password"
-                                    required
-                                />
-                            </label>
-                            <div class="actions">
-                                <button type="submit">Sign in</button>
-                            </div>
-                        </form>
                     </article>
                 </section>
             </main>

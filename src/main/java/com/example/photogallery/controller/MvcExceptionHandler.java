@@ -2,14 +2,20 @@ package com.example.photogallery.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-@ControllerAdvice(annotations = Controller.class)
+@ControllerAdvice(
+    assignableTypes = {
+        AlbumFlowController.class,
+        AuthController.class,
+        DashboardController.class,
+        GalleryController.class,
+    }
+)
 public class MvcExceptionHandler {
 
     @ExceptionHandler(
@@ -43,4 +49,3 @@ public class MvcExceptionHandler {
         return "redirect:" + target;
     }
 }
-

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Share link not found</title>
+        <link rel="stylesheet" th:href="@{/css/style.css}" />
+    </head>
+    <body class="page">
+        <div class="bg-mesh"></div>
+        <div class="shell">
+            <main class="workbench">
+                <section class="column main">
+                    <article class="card text-center">
+                        <p class="eyebrow">Share</p>
+                        <h2>Link not found</h2>
+                        <p class="muted small" th:text="${message != null ? message : 'This share link is invalid or expired.'}"></p>
+                        <div class="actions" style="justify-content: center;">
+                            <a class="chip clickable accent" th:href="@{/login}">
+                                Go to login
+                            </a>
+                        </div>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </body>
+</html>
+

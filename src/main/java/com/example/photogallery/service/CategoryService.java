@@ -9,6 +9,7 @@ import com.example.photogallery.repository.GalleryRepository;
 import com.example.photogallery.repository.ShareTokenRepository;
 import java.util.List;
 import java.util.NoSuchElementException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -55,11 +56,17 @@ public class CategoryService {
         Tenant tenant = currentTenant();
         return categoryRepository
             .findByTenantAndName(tenant, "General")
-            .orElseGet(() ->
-                categoryRepository.save(
-                    new Category(tenant, "General", "Default category")
-                )
-            );
+            .orElseGet(() -> {
+                try {
+                    return categoryRepository.save(
+                        new Category(tenant, "General", "Default category")
+                    );
+                } catch (DataIntegrityViolationException e) {
+                    return categoryRepository
+                        .findByTenantAndName(tenant, "General")
+                        .orElseThrow(() -> e);
+                }
+            });
     }
 
     public Category create(String name, String description) {
@@ -116,7 +123,6 @@ public class CategoryService {
                     galleryRepository.saveAll(galleries);
 
                     for (var g : galleries) {
-                        shareTokenRepository.deleteByGallery(g);
                         galleryPhotoRepository.deleteByGalleryIdAndTenant(
                             g.getId(),
                             tenant
@@ -125,6 +131,7 @@ public class CategoryService {
                     galleryRepository.deleteAll(galleries);
                 }
 
+                shareTokenRepository.deleteByAlbum(album);
                 albumRepository.delete(album);
             }
         }

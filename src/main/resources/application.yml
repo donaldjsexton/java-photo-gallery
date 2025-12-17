@@ -55,8 +55,3 @@ photo:
       mode: ${PHOTO_GALLERY_TENANT_MODE:per-user}
     upload:
       dir: uploads
-
-app:
-  security:
-    oidc:
-      enabled: ${APP_SECURITY_OIDC_ENABLED:true}

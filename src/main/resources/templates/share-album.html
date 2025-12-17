@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title
+            th:text="${currentAlbum != null ? currentAlbum.name + ' — Shared album' : 'Shared album'}"
+        ></title>
+        <link rel="stylesheet" th:href="@{/css/style.css}" />
+    </head>
+    <body class="page">
+        <div class="bg-mesh"></div>
+        <div class="shell">
+            <main class="workbench">
+                <section class="column main">
+                    <article class="card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Shared album</p>
+                                <h2 th:text="${currentAlbum != null ? currentAlbum.name : 'Album'}"></h2>
+                                <p
+                                    class="muted small"
+                                    th:if="${currentAlbum != null and currentAlbum.description != null}"
+                                    th:text="${currentAlbum.description}"
+                                ></p>
+                            </div>
+                            <span class="pill ghost">Read-only</span>
+                        </div>
+                        <p class="muted small" style="margin-top: 8px;">
+                            <a
+                                class="pill ghost"
+                                th:href="@{/share/{tokenId}/download.zip(tokenId=${shareTokenId})}"
+                            >
+                                Download ZIP (original)
+                            </a>
+                            <a
+                                class="pill ghost"
+                                th:href="@{/share/{tokenId}/download.zip(tokenId=${shareTokenId}, variant='web')}"
+                            >
+                                Download ZIP (web)
+                            </a>
+                        </p>
+                    </article>
+
+                    <div class="gallery-grid">
+                        <a
+                            class="tile"
+                            th:each="g : ${galleries}"
+                            th:with="ident=${g.slug != null and !g.slug.isBlank() ? g.slug : g.publicId}"
+                            th:href="@{/share/{tokenId}/g/{identifier}(tokenId=${shareTokenId}, identifier=${ident})}"
+                        >
+                            <div class="thumb">
+                                <img
+                                    th:if="${galleryThumbnails != null and galleryThumbnails[g.id] != null}"
+                                    th:src="@{/share/{tokenId}/photo/{photoId}(tokenId=${shareTokenId}, photoId=${galleryThumbnails[g.id]})}"
+                                    th:alt="${g.title}"
+                                    onerror="this.style.display='none'"
+                                />
+                                <div
+                                    th:if="${galleryThumbnails == null or galleryThumbnails[g.id] == null}"
+                                    style="height: 200px; display: flex; align-items: center; justify-content: center; color: var(--muted);"
+                                >
+                                    <span class="pill ghost">No cover</span>
+                                </div>
+                            </div>
+                            <div class="tile-meta text-center">
+                                <div class="strong small" th:text="${g.title}"></div>
+                                <div
+                                    class="muted small"
+                                    th:if="${g.createdAt != null}"
+                                    th:text="${#temporals.format(g.createdAt, 'MMM d, yyyy')}"
+                                ></div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <article
+                        class="card text-center muted"
+                        th:if="${galleries == null or galleries.isEmpty()}"
+                    >
+                        No galleries yet.
+                    </article>
+                </section>
+            </main>
+        </div>
+    </body>
+</html>

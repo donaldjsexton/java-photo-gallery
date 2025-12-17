@@ -18,6 +18,22 @@ public interface GalleryRepository extends JpaRepository<Gallery, Long> {
     List<Gallery> findByTenant(Tenant tenant);
     java.util.Optional<Gallery> findByIdAndTenant(Long id, Tenant tenant);
     List<Gallery> findByTenantAndAlbum(Tenant tenant, Album album);
+    List<Gallery> findByTenantAndAlbumAndParentIsNullOrderByCreatedAtDesc(
+        Tenant tenant,
+        Album album
+    );
+
+    Optional<Gallery> findByTenantAndAlbumAndPublicId(
+        Tenant tenant,
+        Album album,
+        UUID publicId
+    );
+
+    Optional<Gallery> findByTenantAndAlbumAndSlug(
+        Tenant tenant,
+        Album album,
+        String slug
+    );
 
     Optional<Gallery> findByTenantAndPublicId(Tenant tenant, UUID publicId);
     Optional<Gallery> findByTenantAndSlug(Tenant tenant, String slug);
@@ -30,5 +46,15 @@ public interface GalleryRepository extends JpaRepository<Gallery, Long> {
     int clearCoverPhotoReferences(
         @Param("tenant") Tenant tenant,
         @Param("photoId") Long photoId
+    );
+
+    @Modifying
+    @Query(
+        "UPDATE Gallery g SET g.visibility = :visibility WHERE g.tenant = :tenant AND g.album = :album"
+    )
+    int updateVisibilityForAlbum(
+        @Param("tenant") Tenant tenant,
+        @Param("album") Album album,
+        @Param("visibility") String visibility
     );
 }

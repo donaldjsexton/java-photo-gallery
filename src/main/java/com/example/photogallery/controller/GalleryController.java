@@ -8,6 +8,7 @@ import com.example.photogallery.service.GalleryPhotoService;
 import com.example.photogallery.service.GalleryService;
 import com.example.photogallery.service.PhotoService;
 import java.util.List;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -42,25 +43,6 @@ public class GalleryController {
         this.albumService = albumService;
     }
 
-    @GetMapping("/")
-    public String listGalleriesRoot(Model model) {
-        // Root: ONLY show galleries; no global photo dump
-        List<Gallery> galleries = galleryService.getRootGalleries();
-        model.addAttribute("categories", categoryService.listForCurrentTenant());
-        model.addAttribute("albums", albumService.listForCurrentTenant());
-
-        model.addAttribute("photos", List.of()); // empty – no global view
-        model.addAttribute("currentSort", "uploadDate");
-        model.addAttribute("searchQuery", null);
-        model.addAttribute("isSearchResult", false);
-        model.addAttribute("galleries", galleries);
-        model.addAttribute("currentGallery", null); // important for template logic
-        model.addAttribute("currentAlbum", null);
-        model.addAttribute("flowMode", false);
-
-        return "gallery";
-    }
-
     @GetMapping("/gallery/{id}")
     public String viewGallery(
         @PathVariable("id") Long galleryId,
@@ -86,6 +68,11 @@ public class GalleryController {
         model.addAttribute("flowMode", false);
 
         return "gallery";
+    }
+
+    @GetMapping("/favicon.ico")
+    public void favicon(HttpServletResponse response) {
+        response.setStatus(HttpServletResponse.SC_NO_CONTENT);
     }
 
     @GetMapping("/{identifier}")
@@ -293,8 +280,7 @@ public class GalleryController {
                     galleryService.createChildGallery(
                         parentId,
                         title,
-                        description,
-                        albumId
+                        description
                     );
             } else if (albumId != null) {
                 created =

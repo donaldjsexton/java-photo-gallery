@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,23 +36,11 @@ public class TenantService {
 
     @PostConstruct
     public void ensureDefaultTenant() {
-        tenantRepository
-            .findBySlug(defaultTenantSlug)
-            .orElseGet(() ->
-                tenantRepository.save(
-                    new Tenant(defaultTenantSlug, defaultTenantName)
-                )
-            );
+        getOrCreateBySlug(defaultTenantSlug, defaultTenantName);
     }
 
     public Tenant getDefaultTenant() {
-        return tenantRepository
-            .findBySlug(defaultTenantSlug)
-            .orElseGet(() ->
-                tenantRepository.save(
-                    new Tenant(defaultTenantSlug, defaultTenantName)
-                )
-            );
+        return getOrCreateBySlug(defaultTenantSlug, defaultTenantName);
     }
 
     /**
@@ -67,9 +56,7 @@ public class TenantService {
         if ("subdomain".equalsIgnoreCase(tenantMode)) {
             String slug = TenantContext.getTenantSlug();
             if (StringUtils.hasText(slug)) {
-                return tenantRepository
-                    .findBySlug(slug)
-                    .orElseGet(() -> tenantRepository.save(new Tenant(slug, slug)));
+                return getOrCreateBySlug(slug, slug);
             }
             return getDefaultTenant();
         }
@@ -85,13 +72,23 @@ public class TenantService {
 
         String slug = slugForUserKey(userKey);
         String name = nameForUserKey(userKey);
-        return tenantRepository
-            .findBySlug(slug)
-            .orElseGet(() -> tenantRepository.save(new Tenant(slug, name)));
+        return getOrCreateBySlug(slug, name);
     }
 
     public Tenant save(Tenant tenant) {
         return tenantRepository.save(tenant);
+    }
+
+    public Tenant getOrCreateBySlug(String slug, String name) {
+        return tenantRepository
+            .findBySlug(slug)
+            .orElseGet(() -> {
+                try {
+                    return tenantRepository.save(new Tenant(slug, name));
+                } catch (DataIntegrityViolationException e) {
+                    return tenantRepository.findBySlug(slug).orElseThrow(() -> e);
+                }
+            });
     }
 
     private static String resolveCurrentUserKey() {

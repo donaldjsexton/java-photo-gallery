@@ -7,7 +7,13 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "galleries")
+@Table(
+    name = "galleries",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "tenant_id", "public_id" }),
+        @UniqueConstraint(columnNames = { "tenant_id", "slug" }),
+    }
+)
 public class Gallery {
 
     @Id

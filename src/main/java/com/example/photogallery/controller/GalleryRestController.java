@@ -54,8 +54,7 @@ public class GalleryRestController {
             gallery = galleryService.createChildGallery(
                 parentId,
                 title,
-                description,
-                albumId
+                description
             );
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(gallery));

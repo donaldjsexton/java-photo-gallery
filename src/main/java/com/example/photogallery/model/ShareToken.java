@@ -17,8 +17,8 @@ public class ShareToken {
     private Tenant tenant;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "gallery_id", nullable = false)
-    private Gallery gallery;
+    @JoinColumn(name = "album_id", nullable = false)
+    private Album album;
 
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
@@ -34,13 +34,13 @@ public class ShareToken {
     // Convenience ctor for creation
     public ShareToken(
         Tenant tenant,
-        Gallery gallery,
+        Album album,
         LocalDateTime expiresAt,
         String passwordHash
     ) {
         this.id = UUID.randomUUID();
         this.tenant = tenant;
-        this.gallery = gallery;
+        this.album = album;
         this.expiresAt = expiresAt;
         this.passwordHash = passwordHash;
         this.createdAt = LocalDateTime.now();
@@ -64,12 +64,12 @@ public class ShareToken {
         this.tenant = tenant;
     }
 
-    public Gallery getGallery() {
-        return gallery;
+    public Album getAlbum() {
+        return album;
     }
 
-    public void setGallery(Gallery gallery) {
-        this.gallery = gallery;
+    public void setAlbum(Album album) {
+        this.album = album;
     }
 
     public LocalDateTime getExpiresAt() {

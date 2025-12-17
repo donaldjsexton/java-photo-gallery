@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Deliverable</title>
+        <link rel="stylesheet" th:href="@{/css/style.css}" />
+    </head>
+    <body class="page">
+        <div class="bg-mesh"></div>
+        <div class="shell" style="max-width: 900px;">
+            <main class="workbench">
+                <section class="column main">
+                    <article class="card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Deliverable</p>
+                                <h2>Photo deliveries</h2>
+                                <p class="muted small">
+                                    Sign in to manage albums, or open a shared link.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="actions" style="justify-content: flex-start; gap: 10px;">
+                            <a
+                                class="pill"
+                                th:href="@{/login}"
+                            >
+                                Login
+                            </a>
+                            <a class="pill ghost" th:href="@{/dashboard}">
+                                Open studio
+                            </a>
+                        </div>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Shared link</p>
+                                <h2>Open a delivery</h2>
+                                <p class="muted small">
+                                    Paste a share URL or token and we’ll take you there.
+                                </p>
+                            </div>
+                        </div>
+
+                        <p class="muted small" th:if="${param.shareError}">
+                            That share link couldn’t be recognized. Please paste the full URL.
+                        </p>
+
+                        <form class="form" method="get" th:action="@{/share/resolve}">
+                            <label>
+                                Share link or token
+                                <input
+                                    name="link"
+                                    type="text"
+                                    placeholder="https://…/share/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                                    autocomplete="off"
+                                />
+                            </label>
+                            <div class="actions" style="justify-content: flex-start;">
+                                <button type="submit" class="pill">
+                                    Open shared album
+                                </button>
+                            </div>
+                        </form>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </body>
+</html>

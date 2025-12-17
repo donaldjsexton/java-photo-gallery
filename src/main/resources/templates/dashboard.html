@@ -14,7 +14,7 @@
             </div>
             <main
                 class="workbench"
-                th:classappend="${galleries != null and !galleries.isEmpty()} ? 'no-onboarding' : ''"
+                th:classappend="${albums != null and !albums.isEmpty()} ? 'no-onboarding' : ''"
             >
                 <!-- Left sidebar -->
                 <section class="column">
@@ -27,15 +27,15 @@
                         </p>
                         <div class="stack">
                             <a class="chip clickable accent" th:href="@{/dashboard}">
-                                My galleries
+                                My albums
                             </a>
                             <a class="chip clickable" th:href="@{/flow/album}">
                                 Create new album
                             </a>
                             <a
                                 class="chip clickable"
-                                th:if="${galleries != null and !galleries.isEmpty()}"
-                                th:href="${galleries[0].slug != null ? '/' + galleries[0].slug : '/gallery/' + galleries[0].id}"
+                                th:if="${albums != null and !albums.isEmpty()}"
+                                th:href="@{/albums/{id}(id=${albums[0].id})}"
                             >
                                 Open most recent
                             </a>
@@ -45,7 +45,7 @@
                                     th:name="${_csrf.parameterName}"
                                     th:value="${_csrf.token}"
                                 />
-                                <button type="submit" class="chip clickable">
+                                <button type="submit" class="danger">
                                     Sign out
                                 </button>
                             </form>
@@ -58,9 +58,6 @@
                             <div
                                 th:text="${albums != null ? #lists.size(albums) : 0} + ' albums'"
                             ></div>
-                            <div
-                                th:text="${galleries != null ? #lists.size(galleries) : 0} + ' galleries'"
-                            ></div>
                         </div>
                     </article>
 
@@ -72,12 +69,20 @@
                             </div>
                         </div>
                         <div class="chip-cloud">
-                            <span class="chip ghost">All</span>
-                            <span
-                                class="chip ghost"
+                            <a
+                                class="chip ghost clickable"
+                                th:classappend="${currentCategoryId == null} ? ' accent' : ''"
+                                th:href="@{/dashboard(sort=${currentSort}, q=${searchQuery})}"
+                            >
+                                All
+                            </a>
+                            <a
+                                class="chip ghost clickable"
+                                th:classappend="${currentCategoryId != null and currentCategoryId == c.id} ? ' accent' : ''"
                                 th:each="c : ${categories}"
                                 th:text="${c.name}"
-                            ></span>
+                                th:href="@{/dashboard(categoryId=${c.id}, sort=${currentSort}, q=${searchQuery})}"
+                            ></a>
                         </div>
                     </article>
                 </section>
@@ -87,8 +92,8 @@
                     <article class="card">
                         <div class="card-head">
                             <div>
-                                <p class="eyebrow">Your galleries</p>
-                                <h2>Galleries</h2>
+                                <p class="eyebrow">Your albums</p>
+                                <h2>Albums</h2>
                             </div>
                             <a class="pill ghost" th:href="@{/flow/album}">
                                 + New album
@@ -101,24 +106,28 @@
                                     th:each="c : ${categories}"
                                     th:value="${c.id}"
                                     th:text="${c.name}"
-                                ></option>
-                            </select>
-                            <select name="albumId">
-                                <option value="">All albums</option>
-                                <option
-                                    th:each="a : ${albums}"
-                                    th:value="${a.id}"
-                                    th:text="${a.name}"
+                                    th:selected="${currentCategoryId != null and currentCategoryId == c.id}"
                                 ></option>
                             </select>
                             <select name="sort">
-                                <option value="createdAt">Newest first</option>
-                                <option value="title">A–Z</option>
+                                <option
+                                    value="createdAt"
+                                    th:selected="${currentSort == null or currentSort == 'createdAt'}"
+                                >
+                                    Newest first
+                                </option>
+                                <option
+                                    value="title"
+                                    th:selected="${currentSort != null and currentSort == 'title'}"
+                                >
+                                    A–Z
+                                </option>
                             </select>
                             <input
                                 type="search"
                                 name="q"
-                                placeholder="Search galleries"
+                                placeholder="Search albums"
+                                th:value="${searchQuery}"
                             />
                             <button type="submit">Filter</button>
                         </form>
@@ -136,47 +145,47 @@
                             </div>
                             <div class="tile-meta text-center">
                                 <div class="strong small">
-                                    Create a new gallery
+                                    Create a new album
                                 </div>
                                 <div class="muted small">
-                                    Start a new album
+                                    Set up category and galleries
                                 </div>
                             </div>
                         </a>
 
-                        <!-- Existing galleries -->
+                        <!-- Existing albums -->
                         <a
                             class="tile"
-                            th:each="g : ${galleries}"
-                            th:href="${g.slug != null ? '/' + g.slug : '/gallery/' + g.id}"
+                            th:each="a : ${albums}"
+                            th:href="@{/albums/{id}(id=${a.id})}"
                         >
                             <div class="thumb">
                                 <img
-                                    th:if="${galleryThumbnails != null and galleryThumbnails[g.id] != null}"
-                                    th:src="@{'/uploads/' + ${galleryThumbnails[g.id]}}"
-                                    th:alt="${g.title}"
+                                    th:if="${albumThumbnails != null and albumThumbnails[a.id] != null}"
+                                    th:src="@{/photos/{id}/image(id=${albumThumbnails[a.id]})}"
+                                    th:alt="${a.name}"
                                     onerror="this.style.display='none'"
                                 />
                                 <div
-                                    th:if="${galleryThumbnails == null or galleryThumbnails[g.id] == null}"
+                                    th:if="${albumThumbnails == null or albumThumbnails[a.id] == null}"
                                     style="height: 200px; display: flex; align-items: center; justify-content: center; color: var(--muted);"
                                 >
                                     <span
                                         class="pill ghost"
-                                        th:text="${g.visibility}"
+                                        th:text="${a.category != null ? a.category.name : 'Uncategorized'}"
                                     ></span>
                                 </div>
                             </div>
                             <div class="tile-meta text-center">
-                                <div class="strong small" th:text="${g.title}"></div>
+                                <div class="strong small" th:text="${a.name}"></div>
                                 <div
                                     class="muted small"
-                                    th:text="${g.album != null ? g.album.name : 'Default album'}"
+                                    th:text="${a.category != null ? a.category.name : 'Uncategorized'}"
                                 ></div>
                                 <div
                                     class="muted small"
-                                    th:if="${g.createdAt != null}"
-                                    th:text="${#temporals.format(g.createdAt, 'MMM d, yyyy')}"
+                                    th:if="${a.createdAt != null}"
+                                    th:text="${#temporals.format(a.createdAt, 'MMM d, yyyy')}"
                                 ></div>
                             </div>
                         </a>
@@ -184,16 +193,16 @@
 
                     <article
                         class="card text-center muted"
-                        th:if="${galleries == null or galleries.isEmpty()}"
+                        th:if="${albums == null or albums.isEmpty()}"
                     >
-                        No galleries yet. Create your first album to get started.
+                        No albums yet. Create your first album to get started.
                     </article>
                 </section>
 
                 <!-- Right column placeholder to preserve workbench rhythm -->
                 <section
                     class="column"
-                    th:if="${galleries == null or galleries.isEmpty()}"
+                    th:if="${albums == null or albums.isEmpty()}"
                 >
                     <article class="card gradient">
                         <p class="eyebrow">Ready to start?</p>

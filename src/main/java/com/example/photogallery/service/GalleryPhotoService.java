@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -68,17 +69,24 @@ public class GalleryPhotoService {
             .findByIdAndTenant(photoId, tenant)
             .orElseThrow(() -> new NoSuchElementException("Photo not found"));
 
-        // If already there, just return existing mapping
-        return galleryPhotoRepository
-            .findByGalleryAndPhoto(gallery, photo)
-            .orElseGet(() -> {
-                GalleryPhoto gp = new GalleryPhoto();
-                gp.setTenant(tenant);
-                gp.setGallery(gallery);
-                gp.setPhoto(photo);
-                gp.setSortOrder(sortOrder);
-                return galleryPhotoRepository.save(gp);
-            });
+        // If already there, just return existing mapping.
+        // If two requests race, rely on the DB unique constraint and re-fetch on conflict.
+        try {
+            return galleryPhotoRepository
+                .findByGalleryAndPhoto(gallery, photo)
+                .orElseGet(() -> {
+                    GalleryPhoto gp = new GalleryPhoto();
+                    gp.setTenant(tenant);
+                    gp.setGallery(gallery);
+                    gp.setPhoto(photo);
+                    gp.setSortOrder(sortOrder);
+                    return galleryPhotoRepository.save(gp);
+                });
+        } catch (DataIntegrityViolationException e) {
+            return galleryPhotoRepository
+                .findByGalleryAndPhoto(gallery, photo)
+                .orElseThrow(() -> e);
+        }
     }
 
     // Overload: no explicit sort order

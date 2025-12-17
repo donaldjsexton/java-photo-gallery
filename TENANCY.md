@@ -31,6 +31,8 @@ If you’d rather “start fresh” than deal with incremental schema changes:
 - Delete the H2 dev DB: `rm -f target/devdb*`
 - (Optional) delete uploads: `rm -rf uploads/`
 
+If you see errors like missing columns (e.g. `albums.visibility`) or constraints from older schemas (e.g. `share_tokens.gallery_id` being NOT NULL), the fix is to delete `target/devdb*` and restart so Hibernate can recreate the schema from the current entities.
+
 ## Deletion + cleanup
 
 - Deleting a gallery removes its gallery mappings; any photos that become unreferenced (not in any gallery and not used as a cover photo) are automatically purged from the DB and `uploads/`, so they can be reuploaded.

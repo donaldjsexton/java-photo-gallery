@@ -1,23 +1,32 @@
 package com.example.photogallery.service;
 
 import com.example.photogallery.model.Album;
+import com.example.photogallery.model.AlbumVisibility;
 import com.example.photogallery.model.Gallery;
 import com.example.photogallery.model.Tenant;
 import com.example.photogallery.repository.GalleryPhotoRepository;
 import com.example.photogallery.repository.GalleryRepository;
-import com.example.photogallery.repository.ShareTokenRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import java.util.Locale;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class GalleryService {
+
+    private final TransactionTemplate transactionTemplate;
+
+    public GalleryService(PlatformTransactionManager transactionManager) {
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
 
     @Autowired
     private GalleryRepository galleryRepository;
@@ -34,12 +43,12 @@ public class GalleryService {
     @Autowired
     private GalleryPhotoRepository galleryPhotoRepository;
 
-    @Autowired
-    private ShareTokenRepository shareTokenRepository;
-
     @PostConstruct
-    @Transactional
-    void backfillPublicIdsAndSlugs() {
+    void init() {
+        transactionTemplate.executeWithoutResult(status -> backfillPublicIdsAndSlugs());
+    }
+
+    private void backfillPublicIdsAndSlugs() {
         for (Gallery g : galleryRepository.findAll()) {
             boolean changed = false;
             if (g.getPublicId() == null) {
@@ -49,6 +58,16 @@ public class GalleryService {
             if (!StringUtils.hasText(g.getSlug())) {
                 g.setSlug(generateUniqueSlug(g.getTenant(), g.getTitle()));
                 changed = true;
+            }
+            if (g.getAlbum() != null) {
+                String desired = galleryVisibilityForAlbum(g.getAlbum());
+                if (
+                    !StringUtils.hasText(g.getVisibility()) ||
+                    !desired.equalsIgnoreCase(g.getVisibility())
+                ) {
+                    g.setVisibility(desired);
+                    changed = true;
+                }
             }
             if (changed) {
                 galleryRepository.save(g);
@@ -71,16 +90,22 @@ public class GalleryService {
         String title,
         String description
     ) {
+        if (album == null) {
+            throw new IllegalArgumentException("Album is required.");
+        }
+        if (album.getId() == null) {
+            throw new IllegalArgumentException("Album is required.");
+        }
         Tenant tenant = resolveTenant();
+        Album resolvedAlbum = albumService.getById(album.getId());
         Gallery g = new Gallery();
         g.setTenant(tenant);
-        g.setAlbum(album);
+        g.setAlbum(resolvedAlbum);
         g.setTitle(title);
         g.setPublicId(UUID.randomUUID());
-        g.setSlug(generateUniqueSlug(tenant, title));
         g.setDescription(description);
-        g.setVisibility("private"); // default
-        return galleryRepository.save(g);
+        g.setVisibility(galleryVisibilityForAlbum(resolvedAlbum));
+        return saveWithUniqueSlugRetry(g, title);
     }
 
     public Gallery createRootGalleryInAlbum(
@@ -95,8 +120,7 @@ public class GalleryService {
     private Gallery createChildGalleryWithAlbum(
         Long parentId,
         String title,
-        String description,
-        Album albumOverride
+        String description
     ) {
         Tenant tenant = resolveTenant();
         Gallery parent = galleryRepository
@@ -105,36 +129,16 @@ public class GalleryService {
                 new NoSuchElementException("Parent gallery not found")
             );
 
-        Album albumToUse =
-            albumOverride != null ? albumOverride : parent.getAlbum();
-
         Gallery child = new Gallery();
         child.setTenant(tenant);
-        child.setAlbum(albumToUse);
+        child.setAlbum(parent.getAlbum());
         child.setParent(parent);
         child.setTitle(title);
         child.setPublicId(UUID.randomUUID());
-        child.setSlug(generateUniqueSlug(tenant, title));
         child.setDescription(description);
-        child.setVisibility("private");
+        child.setVisibility(galleryVisibilityForAlbum(parent.getAlbum()));
 
-        return galleryRepository.save(child);
-    }
-
-    public Gallery createChildGallery(
-        Long parentId,
-        String title,
-        String description,
-        Long albumIdOverride
-    ) {
-        Album albumOverride =
-            albumIdOverride != null ? albumService.getById(albumIdOverride) : null;
-        return createChildGalleryWithAlbum(
-            parentId,
-            title,
-            description,
-            albumOverride
-        );
+        return saveWithUniqueSlugRetry(child, title);
     }
 
     public Gallery createChildGallery(
@@ -145,8 +149,7 @@ public class GalleryService {
         return createChildGalleryWithAlbum(
             parentId,
             title,
-            description,
-            null
+            description
         );
     }
 
@@ -182,6 +185,20 @@ public class GalleryService {
         return galleryRepository.findByTenantAndParentIsNull(resolveTenant());
     }
 
+    public List<Gallery> getRootGalleriesForAlbum(Long albumId) {
+        Tenant tenant = resolveTenant();
+        Album album = albumService.getById(albumId);
+        return getRootGalleriesForAlbum(album);
+    }
+
+    public List<Gallery> getRootGalleriesForAlbum(Album album) {
+        Tenant tenant = resolveTenant();
+        return galleryRepository.findByTenantAndAlbumAndParentIsNullOrderByCreatedAtDesc(
+            tenant,
+            album
+        );
+    }
+
     public List<Gallery> getChildren(Long id) {
         return galleryRepository.findByTenantAndParentId(resolveTenant(), id);
     }
@@ -202,7 +219,9 @@ public class GalleryService {
 
         if (newTitle != null) g.setTitle(newTitle);
         if (newDescription != null) g.setDescription(newDescription);
-        if (visibility != null) g.setVisibility(visibility);
+        if (visibility != null) {
+            g.setVisibility(galleryVisibilityForAlbum(g.getAlbum()));
+        }
 
         return g; // JPA auto-flushes
     }
@@ -229,7 +248,6 @@ public class GalleryService {
         }
 
         // Remove any dependent rows that could block deletion (DBs may not have cascading FKs)
-        shareTokenRepository.deleteByGallery(gallery);
         galleryPhotoRepository.deleteByGalleryIdAndTenant(id, tenant);
 
         galleryRepository.delete(gallery);
@@ -240,6 +258,21 @@ public class GalleryService {
 
     private Tenant resolveTenant() {
         return tenantService.getCurrentTenant();
+    }
+
+    private Gallery saveWithUniqueSlugRetry(Gallery gallery, String titleForSlug) {
+        Tenant tenant = gallery.getTenant();
+        for (int attempt = 0; attempt < 5; attempt++) {
+            gallery.setSlug(generateUniqueSlug(tenant, titleForSlug));
+            try {
+                return galleryRepository.save(gallery);
+            } catch (DataIntegrityViolationException e) {
+                if (attempt == 4) {
+                    throw e;
+                }
+            }
+        }
+        throw new IllegalStateException("Failed to create gallery with unique slug");
     }
 
     private String generateUniqueSlug(Tenant tenant, String title) {
@@ -269,5 +302,10 @@ public class GalleryService {
         if (!StringUtils.hasText(slug)) return null;
         if (slug.length() > 80) return slug.substring(0, 80).replaceAll("-+$", "");
         return slug;
+    }
+
+    private static String galleryVisibilityForAlbum(Album album) {
+        AlbumVisibility visibility = album != null ? album.getVisibility() : null;
+        return visibility == AlbumVisibility.PUBLIC ? "public" : "private";
     }
 }
