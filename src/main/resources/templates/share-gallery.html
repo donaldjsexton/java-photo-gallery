@@ -10,9 +10,42 @@
     </head>
     <body class="page">
         <div class="bg-mesh"></div>
-        <div class="shell">
-            <main class="workbench">
-                <section class="column main">
+        <div class="shell app-shell">
+            <header class="app-nav">
+                <a class="brand" th:href="@{/}" aria-label="Deliverable home">
+                    <img
+                        class="brand-logo brand-logo-mobile"
+                        th:src="@{/img/logo.png}"
+                        alt="Deliverable"
+                        decoding="async"
+                    />
+                    <img
+                        class="brand-logo brand-logo-desktop"
+                        th:src="@{/img/logo-full.png}"
+                        alt="Deliverable"
+                        decoding="async"
+                    />
+                </a>
+                <nav class="nav-actions" aria-label="Primary">
+                    <a
+                        class="btn secondary"
+                        th:if="${currentAlbum != null}"
+                        th:href="@{/share/{tokenId}(tokenId=${shareTokenId})}"
+                    >
+                        Back to album
+                    </a>
+                    <a class="btn secondary" th:href="@{/}">
+                        Home
+                    </a>
+                    <a class="btn primary" th:href="@{/login}">
+                        Sign in
+                    </a>
+                </nav>
+            </header>
+
+            <main class="app-main">
+                <div class="workbench">
+                    <section class="column main">
                     <article class="card">
                         <div class="card-head">
                             <div>
@@ -75,7 +108,8 @@
                     <article class="card text-center muted" th:if="${photos == null or photos.isEmpty()}">
                         No photos yet.
                     </article>
-                </section>
+                    </section>
+                </div>
             </main>
         </div>
 

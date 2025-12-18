@@ -1,14 +1,16 @@
 :root {
     --bg: #ffffff;
-    --surface: #f6f8fc;
+    --surface: #fff7ed;
     --panel: #ffffff;
     --card: #ffffff;
     --stroke: rgba(15, 23, 42, 0.12);
     --muted: #5b647a;
     --ink: #0f172a;
-    --accent: #0ea5e9;
-    --accent-2: #8b5cf6;
-    --glow: 0 18px 45px rgba(14, 165, 233, 0.25);
+    --accent-rgb: 249 115 22;
+    --accent-2-rgb: 245 158 11;
+    --accent: rgb(var(--accent-rgb));
+    --accent-2: rgb(var(--accent-2-rgb));
+    --glow: 0 18px 45px rgba(var(--accent-rgb) / 0.26);
     --radius: 16px;
 }
 
@@ -102,7 +104,7 @@ input[type="submit"]:hover,
 .pf-c-button.pf-m-primary:hover,
 #kc-login:hover {
     transform: translateY(-1px);
-    box-shadow: 0 16px 40px rgba(14, 165, 233, 0.32);
+    box-shadow: 0 16px 40px rgba(var(--accent-rgb) / 0.32);
 }
 
 /* Links + helper text */

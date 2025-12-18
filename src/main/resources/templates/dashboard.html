@@ -3,19 +3,53 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Heroui Gallery Studio — Dashboard</title>
+        <title>Deliverable — Dashboard</title>
         <link rel="stylesheet" th:href="@{/css/style.css}" />
     </head>
     <body class="page">
         <div class="bg-mesh"></div>
-        <div class="shell">
-            <div class="card" th:if="${message != null}" style="margin-bottom: 16px;">
-                <div class="muted small" th:text="${message}"></div>
-            </div>
-            <main
-                class="workbench"
-                th:classappend="${albums != null and !albums.isEmpty()} ? 'no-onboarding' : ''"
-            >
+        <div class="shell app-shell">
+            <header class="app-nav">
+                <a class="brand" th:href="@{/dashboard}" aria-label="Deliverable dashboard">
+                    <img
+                        class="brand-logo brand-logo-mobile"
+                        th:src="@{/img/logo.png}"
+                        alt="Deliverable"
+                        decoding="async"
+                    />
+                    <img
+                        class="brand-logo brand-logo-desktop"
+                        th:src="@{/img/logo-full.png}"
+                        alt="Deliverable"
+                        decoding="async"
+                    />
+                </a>
+                <nav class="nav-actions" aria-label="Primary">
+                    <a class="btn secondary" th:href="@{/flow/album}">
+                        New album
+                    </a>
+                    <form th:action="@{/logout}" method="post">
+                        <input
+                            type="hidden"
+                            th:name="${_csrf.parameterName}"
+                            th:value="${_csrf.token}"
+                        />
+                        <button type="submit" class="btn danger">
+                            Sign out
+                        </button>
+                    </form>
+                </nav>
+            </header>
+
+            <main class="app-main">
+                <div class="card" th:if="${message != null}">
+                    <div class="muted small" th:text="${message}"></div>
+                </div>
+
+                <div
+                    class="workbench"
+                    th:classappend="${albums != null and !albums.isEmpty()} ? 'no-onboarding' : ''"
+                >
                 <!-- Left sidebar -->
                 <section class="column">
                     <article class="card">
@@ -39,16 +73,6 @@
                             >
                                 Open most recent
                             </a>
-                            <form th:action="@{/logout}" method="post">
-                                <input
-                                    type="hidden"
-                                    th:name="${_csrf.parameterName}"
-                                    th:value="${_csrf.token}"
-                                />
-                                <button type="submit" class="danger">
-                                    Sign out
-                                </button>
-                            </form>
                         </div>
                         <div class="divider"></div>
                         <div class="stack small muted">
@@ -216,6 +240,7 @@
                         </a>
                     </article>
                 </section>
+                </div>
             </main>
         </div>
     </body>
