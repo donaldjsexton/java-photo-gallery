@@ -6,68 +6,168 @@
         <title>Deliverable</title>
         <link rel="stylesheet" th:href="@{/css/style.css}" />
     </head>
-    <body class="page">
+    <body class="page landing">
         <div class="bg-mesh"></div>
-        <div class="shell" style="max-width: 900px;">
-            <main class="workbench">
-                <section class="column main">
-                    <article class="card">
-                        <div class="card-head">
-                            <div>
-                                <p class="eyebrow">Deliverable</p>
-                                <h2>Photo deliveries</h2>
-                                <p class="muted small">
-                                    Sign in to manage albums, or open a shared link.
-                                </p>
-                            </div>
-                        </div>
+        <div class="shell landing-shell">
+            <header class="landing-nav">
+                <a class="brand" th:href="@{/}" aria-label="Deliverable home">
+                    <img
+                        class="brand-logo brand-logo-mobile"
+                        th:src="@{/img/logo.png}"
+                        alt="Deliverable"
+                        decoding="async"
+                    />
+                    <img
+                        class="brand-logo brand-logo-desktop"
+                        th:src="@{/img/logo-full.png}"
+                        alt="Deliverable"
+                        decoding="async"
+                    />
+                </a>
 
-                        <div class="actions" style="justify-content: flex-start; gap: 10px;">
-                            <a
-                                class="pill"
-                                th:href="@{/login}"
-                            >
-                                Login
-                            </a>
-                            <a class="pill ghost" th:href="@{/dashboard}">
-                                Open studio
-                            </a>
-                        </div>
-                    </article>
+                <nav class="nav-actions" aria-label="Primary">
+                    <a class="btn secondary" href="#open">Open a shared delivery</a>
+                    <a class="btn primary" th:href="@{/login}">Sign in</a>
+                </nav>
+            </header>
 
-                    <article class="card">
-                        <div class="card-head">
-                            <div>
-                                <p class="eyebrow">Shared link</p>
-                                <h2>Open a delivery</h2>
-                                <p class="muted small">
-                                    Paste a share URL or token and we’ll take you there.
-                                </p>
-                            </div>
-                        </div>
-
-                        <p class="muted small" th:if="${param.shareError}">
-                            That share link couldn’t be recognized. Please paste the full URL.
+            <main class="landing-main">
+                <section class="landing-hero" aria-labelledby="hero-title">
+                    <div class="hero-copy">
+                        <p class="eyebrow">Photo deliveries, simplified</p>
+                        <h1 id="hero-title" class="display">
+                            Deliver photos like a pro.
+                        </h1>
+                        <p class="lede landing-lede">
+                            Private or public client albums. Add galleries, upload more later, and deliver full-res downloads—without the chaos.
                         </p>
 
-                        <form class="form" method="get" th:action="@{/share/resolve}">
-                            <label>
-                                Share link or token
-                                <input
-                                    name="link"
-                                    type="text"
-                                    placeholder="https://…/share/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                                    autocomplete="off"
-                                />
-                            </label>
-                            <div class="actions" style="justify-content: flex-start;">
-                                <button type="submit" class="pill">
-                                    Open shared album
-                                </button>
+                        <div class="cta-row">
+                            <a class="btn primary" th:href="@{/login}">Sign in</a>
+                            <a class="btn secondary" href="#open">Open a shared delivery</a>
+                        </div>
+
+                        <div class="hero-bullets" aria-label="Highlights">
+                            <span class="chip accent">Full-res downloads</span>
+                            <span class="chip">Share link access</span>
+                            <span class="chip">Album ZIP export</span>
+                        </div>
+                    </div>
+
+                    <div class="hero-media" aria-hidden="true">
+                        <div class="hero-illustration">
+                            <img
+                                th:src="@{/img/hero-illustration.png}"
+                                alt=""
+                                role="presentation"
+                                decoding="async"
+                            />
+                        </div>
+
+                        <div class="hero-preview card">
+                            <div class="preview-top">
+                                <span class="eyebrow">Preview</span>
+                                <span class="pill ghost">Client album</span>
                             </div>
-                        </form>
-                    </article>
+                            <div class="preview-grid">
+                                <div class="preview-tile"></div>
+                                <div class="preview-tile"></div>
+                                <div class="preview-tile"></div>
+                                <div class="preview-tile"></div>
+                                <div class="preview-tile"></div>
+                                <div class="preview-tile"></div>
+                            </div>
+                            <div class="divider"></div>
+                            <div class="preview-actions">
+                                <span class="chip accent">Download</span>
+                                <span class="chip">Share</span>
+                                <span class="chip">ZIP</span>
+                            </div>
+                        </div>
+                    </div>
                 </section>
+
+                <section class="landing-section" aria-labelledby="how-title">
+                    <h2 id="how-title" class="section-title">How it works</h2>
+                    <div class="steps">
+                        <article class="step-card">
+                            <div class="step-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M4 7.5c0-1.1.9-2 2-2h6l2 2h8c1.1 0 2 .9 2 2v8.5c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V7.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                                    <path d="M4.5 10.5h19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".4"/>
+                                </svg>
+                            </div>
+                            <h3>Create an album</h3>
+                            <p class="muted small">Start a client delivery and keep everything tidy and searchable.</p>
+                        </article>
+                        <article class="step-card">
+                            <div class="step-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 3v12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                                    <path d="M8.5 7.2L12 3.7l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M5 14.2v4.3c0 1 .8 1.8 1.8 1.8h10.4c1 0 1.8-.8 1.8-1.8v-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/>
+                                </svg>
+                            </div>
+                            <h3>Add galleries + upload</h3>
+                            <p class="muted small">Upload images now, then add more later—no re-sending, no confusion.</p>
+                        </article>
+                        <article class="step-card">
+                            <div class="step-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M10 14l10-6-10-6v12z" fill="currentColor"/>
+                                    <path d="M4 19h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>
+                                </svg>
+                            </div>
+                            <h3>Share link + downloads</h3>
+                            <p class="muted small">Send a link, let clients browse, and deliver full-res downloads instantly.</p>
+                        </article>
+                    </div>
+                </section>
+
+                <section id="open" class="landing-section" aria-labelledby="open-title">
+                    <h2 id="open-title" class="section-title">Open a delivery</h2>
+                    <div class="open-wrap">
+                        <article class="card open-card">
+                            <div class="card-head">
+                                <div>
+                                    <p class="eyebrow">Shared link</p>
+                                    <h3>Paste a share URL or token</h3>
+                                    <p class="muted small">
+                                        We’ll route you to the album instantly.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <p class="muted small" th:if="${param.shareError}">
+                                That share link couldn’t be recognized. Please paste the full URL or token.
+                            </p>
+
+                            <form class="form stacked" method="get" th:action="@{/share/resolve}">
+                                <label>
+                                    Share link or token
+                                    <input
+                                        name="link"
+                                        type="text"
+                                        placeholder="https://…/share/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                                        autocomplete="off"
+                                        inputmode="url"
+                                    />
+                                </label>
+                                <div class="actions" style="justify-content: flex-start;">
+                                    <button type="submit">
+                                        Open shared album
+                                    </button>
+                                </div>
+                            </form>
+                        </article>
+                    </div>
+                </section>
+
+                <footer class="landing-footer">
+                    <p class="muted small">
+                        Deliverable — simple photo delivery for client work.
+                    </p>
+                </footer>
             </main>
         </div>
     </body>

@@ -32,7 +32,7 @@ public class SecurityConfig {
     ) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
+                .requestMatchers("/css/**", "/js/**", "/img/**").permitAll()
                 .requestMatchers("/", "/favicon.ico").permitAll()
                 .requestMatchers("/login").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
