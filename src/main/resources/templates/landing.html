@@ -27,7 +27,31 @@
 
                 <nav class="nav-actions" aria-label="Primary">
                     <a class="btn secondary" href="#open">Open a shared delivery</a>
-                    <a class="btn primary" th:href="@{/login}">Sign in</a>
+                    <details class="dropdown auth-dropdown">
+                        <summary class="btn primary" aria-haspopup="menu">
+                            Sign in
+                        </summary>
+
+                        <iframe src="http://localhost:8080/realms/photo-gallery/protocol/openid-connect/auth?response_type=code&client_id=photo-gallery&scope=openid%20profile%20email&state=lZRRhVlXE3r24VRGtWpP-MflpWvj58vJoKuTYkMv3Zk%3D&redirect_uri=http://localhost:8090/login/oauth2/code/keycloak&nonce=lXzLSAOcMWmnAFCdl7zQ8AaP1PCb89wSqklsG7gqgxk" width="200px"></iframe>
+                        <!-- <div class="dropdown-panel card" role="menu">
+                            <p class="eyebrow">Account</p>
+                            <a
+                                class="btn primary wide"
+                                th:href="@{/oauth2/authorization/keycloak}"
+                            >
+                                Continue with Keycloak
+                            </a>
+                            <a
+                                class="btn secondary wide"
+                                th:href="@{/oauth2/authorization/keycloak(prompt='login')}"
+                            >
+                                Use a different account
+                            </a>
+                            <p class="muted small">
+                                Sign in uses your Keycloak SSO session. If you just signed out, use “different account” to force a fresh login.
+                            </p>
+                        </div> -->
+                    </details>
                 </nav>
             </header>
 
@@ -43,7 +67,9 @@
                         </p>
 
                         <div class="cta-row">
-                            <a class="btn primary" th:href="@{/login}">Sign in</a>
+                            <button class="btn primary" type="button" data-auth-open>
+                                Sign in
+                            </button>
                             <a class="btn secondary" href="#open">Open a shared delivery</a>
                         </div>
 
@@ -170,5 +196,45 @@
                 </footer>
             </main>
         </div>
+
+        <dialog id="auth-modal" class="auth-modal" aria-label="Sign in">
+            <div class="card auth-modal-surface">
+                <div class="auth-modal-head">
+                    <div>
+                        <p class="eyebrow">Account</p>
+                        <h2>Sign in</h2>
+                        <p class="muted small">
+                            Continue with your Keycloak account.
+                        </p>
+                    </div>
+                    <form method="dialog">
+                        <button class="btn secondary" type="submit">
+                            Close
+                        </button>
+                    </form>
+                </div>
+
+                <div class="auth-modal-actions">
+                    <a
+                        class="btn primary wide"
+                        th:href="@{/oauth2/authorization/keycloak}"
+                    >
+                        Continue with Keycloak
+                    </a>
+                    <a
+                        class="btn secondary wide"
+                        th:href="@{/oauth2/authorization/keycloak(prompt='login')}"
+                    >
+                        Use a different account
+                    </a>
+                </div>
+
+                <p class="muted small" style="margin: 10px 0 0;">
+                    Tip: If Keycloak auto-logs you back in after signing out, “different account” will pass prompt=login.
+                </p>
+            </div>
+        </dialog>
+
+        <script th:src="@{/js/landing-auth.js}" defer></script>
     </body>
 </html>
