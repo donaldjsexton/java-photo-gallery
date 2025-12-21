@@ -369,6 +369,9 @@ button.icon-btn.danger:hover {
 .workbench.no-onboarding {
     grid-template-columns: 320px 1fr;
 }
+.workbench > .column.main:only-child {
+    grid-column: 1 / -1;
+}
 
 /* Full-width client gallery page */
 .gallery-page {
@@ -673,6 +676,10 @@ details.manage form {
     gap: 12px;
     justify-content: start;
 }
+.gallery-grid.embedded {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    justify-content: stretch;
+}
 .tile {
     background: var(--card);
     border: 1px solid var(--stroke);
@@ -682,6 +689,10 @@ details.manage form {
     flex-direction: column;
     position: relative;
     box-shadow: 0 14px 40px rgba(15, 23, 42, 0.1);
+}
+.tile.embedded {
+    border-radius: 14px;
+    box-shadow: none;
 }
 .thumb {
     position: relative;
@@ -1127,6 +1138,15 @@ button.btn.danger:hover {
     flex-wrap: wrap;
     margin-top: 12px;
 }
+.hero-open {
+    margin-top: 12px;
+}
+.hero-open .card-head {
+    margin-bottom: 10px;
+}
+.hero-open-form button {
+    white-space: nowrap;
+}
 
 .hero-media {
     display: grid;
@@ -1228,10 +1248,6 @@ button.btn.danger:hover {
     height: 22px;
 }
 
-.open-wrap {
-    display: flex;
-    justify-content: center;
-}
 .open-card {
     width: min(720px, 100%);
     background: rgba(255, 255, 255, 0.86);
