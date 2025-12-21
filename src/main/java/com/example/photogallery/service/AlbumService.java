@@ -11,6 +11,10 @@ import com.example.photogallery.repository.ShareTokenRepository;
 import java.util.List;
 import java.util.NoSuchElementException;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -54,6 +58,16 @@ public class AlbumService {
         String sortKey,
         String query
     ) {
+        return searchForDashboardPage(categoryId, sortKey, query, Pageable.unpaged())
+            .getContent();
+    }
+
+    public Page<Album> searchForDashboardPage(
+        Long categoryId,
+        String sortKey,
+        String query,
+        Pageable pageable
+    ) {
         Tenant tenant = currentTenant();
         Category category = categoryId != null
             ? categoryService.getById(categoryId)
@@ -62,7 +76,24 @@ public class AlbumService {
         String normalizedQuery = StringUtils.hasText(query) ? query.trim() : null;
 
         Sort sort = resolveDashboardSort(sortKey);
-        return albumRepository.searchForTenant(tenant, category, normalizedQuery, sort);
+
+        if (pageable == null || pageable.isUnpaged()) {
+            return new PageImpl<>(
+                albumRepository.searchForTenant(tenant, category, normalizedQuery, sort)
+            );
+        }
+
+        Pageable effective = PageRequest.of(
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            sort
+        );
+        return albumRepository.searchForTenant(
+            tenant,
+            category,
+            normalizedQuery,
+            effective
+        );
     }
 
     public Album getById(Long id) {

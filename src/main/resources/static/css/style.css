@@ -128,6 +128,31 @@ h3 {
     flex-direction: column;
     gap: 6px;
 }
+.album-list {
+    list-style: none;
+    margin: 0 0 6px 8px;
+    padding: 2px 0 2px 14px;
+    border-left: 1px solid var(--stroke);
+}
+.album-link {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 10px;
+}
+.album-link:hover {
+    background: rgba(15, 23, 42, 0.04);
+}
+.pager,
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.pagination {
+    justify-content: center;
+    margin-top: 12px;
+}
 
 .hero {
     display: grid;

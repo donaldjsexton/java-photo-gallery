@@ -255,68 +255,10 @@
                         </form>
                     </article>
 
-                    <article class="card" th:if="${categories != null}">
-                        <div class="card-head">
-                            <div>
-                                <p class="eyebrow">Categories</p>
-                                <h2>Browse</h2>
-                            </div>
-                        </div>
-                        <div class="chip-cloud">
-                            <a class="chip ghost clickable" th:href="@{/dashboard}">
-                                All albums
-                            </a>
-                            <a
-                                class="chip ghost clickable"
-                                th:each="c : ${categories}"
-                                th:text="${c.name}"
-                                th:href="@{/dashboard(categoryId=${c.id})}"
-                            ></a>
-                        </div>
-                    </article>
                 </section>
 
                 <!-- Main content -->
                 <section class="column main">
-                    <article class="card">
-                        <div class="card-head">
-                            <div>
-                                <p class="eyebrow">Galleries</p>
-                                <h2>Inside this album</h2>
-                            </div>
-                        </div>
-
-                        <form class="form inline" th:action="@{/galleries}" method="post">
-                            <input
-                                type="hidden"
-                                th:name="${_csrf.parameterName}"
-                                th:value="${_csrf.token}"
-                            />
-                            <input
-                                type="hidden"
-                                name="albumId"
-                                th:value="${currentAlbum != null ? currentAlbum.id : ''}"
-                            />
-                            <input
-                                type="hidden"
-                                name="redirectTo"
-                                th:value="@{/albums/{id}(id=${currentAlbum.id})}"
-                            />
-                            <input
-                                type="text"
-                                name="title"
-                                placeholder="New gallery title"
-                                required
-                            />
-                            <input
-                                type="text"
-                                name="description"
-                                placeholder="Optional description"
-                            />
-                            <button type="submit">+ New gallery</button>
-                        </form>
-                    </article>
-
                     <div class="gallery-grid">
                         <a
                             class="tile"
@@ -348,20 +290,42 @@
                         </a>
                     </div>
 
-                    <article
-                        class="card text-center muted"
-                        th:if="${galleries == null or galleries.isEmpty()}"
-                    >
-                        No galleries yet. Add your first gallery to start uploading photos.
-                    </article>
-
-                    <article class="card" th:if="${galleries != null and !galleries.isEmpty()}">
+                    <article class="card" th:if="${currentAlbum != null}">
                         <div class="card-head">
                             <div>
                                 <p class="eyebrow">Manage</p>
                                 <h2>Galleries</h2>
                             </div>
                         </div>
+                        <form class="form inline" th:action="@{/galleries}" method="post">
+                            <input
+                                type="hidden"
+                                th:name="${_csrf.parameterName}"
+                                th:value="${_csrf.token}"
+                            />
+                            <input
+                                type="hidden"
+                                name="albumId"
+                                th:value="${currentAlbum != null ? currentAlbum.id : ''}"
+                            />
+                            <input
+                                type="hidden"
+                                name="redirectTo"
+                                th:value="@{/albums/{id}(id=${currentAlbum.id})}"
+                            />
+                            <input
+                                type="text"
+                                name="title"
+                                placeholder="New gallery title"
+                                required
+                            />
+                            <input
+                                type="text"
+                                name="description"
+                                placeholder="Optional description"
+                            />
+                            <button type="submit">+ New gallery</button>
+                        </form>
                         <div class="stack">
                             <div
                                 th:each="g : ${galleries}"
@@ -403,6 +367,12 @@
                                 </div>
                                 <div class="divider" style="margin-top: 12px;"></div>
                             </div>
+                        </div>
+                        <div
+                            class="muted small"
+                            th:if="${galleries == null or galleries.isEmpty()}"
+                        >
+                            No galleries yet.
                         </div>
                     </article>
                 </section>

@@ -7,6 +7,8 @@ import com.example.photogallery.service.CategoryService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,13 +36,20 @@ public class DashboardController {
         @RequestParam(name = "categoryId", required = false) Long categoryId,
         @RequestParam(name = "sort", defaultValue = "createdAt") String sort,
         @RequestParam(name = "q", required = false) String query,
+        @RequestParam(name = "page", defaultValue = "1") int page,
+        @RequestParam(name = "size", defaultValue = "12") int size,
         Model model
     ) {
-        List<Album> albums = albumService.searchForDashboard(
+        int pageIndex = Math.max(page, 1) - 1;
+        int pageSize = Math.min(Math.max(size, 1), 60);
+
+        Page<Album> albumPage = albumService.searchForDashboardPage(
             categoryId,
             sort,
-            query
+            query,
+            PageRequest.of(pageIndex, pageSize)
         );
+        List<Album> albums = albumPage.getContent();
 
         Map<Long, Long> albumThumbnails = new HashMap<>();
         try {
@@ -48,6 +57,7 @@ public class DashboardController {
         } catch (RuntimeException ignored) {}
         model.addAttribute("categories", categoryService.listForCurrentTenant());
         model.addAttribute("albums", albums);
+        model.addAttribute("albumPage", albumPage);
         model.addAttribute("albumThumbnails", albumThumbnails);
         model.addAttribute("currentCategoryId", categoryId);
         model.addAttribute("currentSort", sort);

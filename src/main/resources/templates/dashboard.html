@@ -25,9 +25,6 @@
                     />
                 </a>
                 <nav class="nav-actions" aria-label="Primary">
-                    <a class="btn secondary" th:href="@{/flow/album}">
-                        New album
-                    </a>
                     <form th:action="@{/logout}" method="post">
                         <input
                             type="hidden"
@@ -63,24 +60,52 @@
                             <a class="chip clickable accent" th:href="@{/dashboard}">
                                 My albums
                             </a>
+                            <ul
+                                class="album-list"
+                                th:if="${albums != null and !albums.isEmpty()}"
+                            >
+                                <li th:each="a : ${albums}">
+                                    <a
+                                        class="album-link"
+                                        th:href="@{/albums/{id}(id=${a.id})}"
+                                    >
+                                        <span
+                                            class="strong small"
+                                            th:text="${a.name}"
+                                        ></span>
+                                    </a>
+                                </li>
+                            </ul>
+                            <div
+                                class="pager"
+                                th:if="${albumPage != null and albumPage.totalPages > 1}"
+                            >
+                                <a
+                                    class="chip ghost clickable"
+                                    th:if="${albumPage.hasPrevious()}"
+                                    th:href="@{/dashboard(page=${albumPage.number}, size=${albumPage.size}, categoryId=${currentCategoryId}, sort=${currentSort}, q=${searchQuery})}"
+                                >
+                                    Prev
+                                </a>
+                                <span
+                                    class="muted small"
+                                    th:text="'Page ' + (${albumPage.number + 1}) + ' of ' + ${albumPage.totalPages}"
+                                ></span>
+                                <a
+                                    class="chip ghost clickable"
+                                    th:if="${albumPage.hasNext()}"
+                                    th:href="@{/dashboard(page=${albumPage.number + 2}, size=${albumPage.size}, categoryId=${currentCategoryId}, sort=${currentSort}, q=${searchQuery})}"
+                                >
+                                    Next
+                                </a>
+                            </div>
                             <a class="chip clickable" th:href="@{/flow/album}">
                                 Create new album
                             </a>
-                            <a
-                                class="chip clickable"
-                                th:if="${albums != null and !albums.isEmpty()}"
-                                th:href="@{/albums/{id}(id=${albums[0].id})}"
-                            >
-                                Open most recent
-                            </a>
-                        </div>
                         <div class="divider"></div>
                         <div class="stack small muted">
                             <div
-                                th:text="${categories != null ? #lists.size(categories) : 0} + ' categories'"
-                            ></div>
-                            <div
-                                th:text="${albums != null ? #lists.size(albums) : 0} + ' albums'"
+                                th:text="${albumPage != null ? albumPage.totalElements : (albums != null ? #lists.size(albums) : 0)} + ' albums'"
                             ></div>
                         </div>
                     </article>
@@ -221,6 +246,30 @@
                     >
                         No albums yet. Create your first album to get started.
                     </article>
+                    <nav
+                        class="pagination"
+                        th:if="${albumPage != null and albumPage.totalPages > 1}"
+                        aria-label="Album pagination"
+                    >
+                        <a
+                            class="chip ghost clickable"
+                            th:if="${albumPage.hasPrevious()}"
+                            th:href="@{/dashboard(page=${albumPage.number}, size=${albumPage.size}, categoryId=${currentCategoryId}, sort=${currentSort}, q=${searchQuery})}"
+                        >
+                            Prev
+                        </a>
+                        <span
+                            class="muted small"
+                            th:text="'Page ' + (${albumPage.number + 1}) + ' of ' + ${albumPage.totalPages}"
+                        ></span>
+                        <a
+                            class="chip ghost clickable"
+                            th:if="${albumPage.hasNext()}"
+                            th:href="@{/dashboard(page=${albumPage.number + 2}, size=${albumPage.size}, categoryId=${currentCategoryId}, sort=${currentSort}, q=${searchQuery})}"
+                        >
+                            Next
+                        </a>
+                    </nav>
                 </section>
 
                 <!-- Right column placeholder to preserve workbench rhythm -->
