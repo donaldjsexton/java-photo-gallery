@@ -142,6 +142,102 @@ h3 {
 .album-link:hover {
     background: rgba(15, 23, 42, 0.04);
 }
+
+.mini-gallery-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.mini-gallery-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: rgba(15, 23, 42, 0.02);
+}
+.mini-gallery-link {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mini-gallery-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.mini-gallery-actions form {
+    margin: 0;
+}
+
+button.pill {
+    background: rgba(15, 23, 42, 0.03);
+    border: 1px solid var(--stroke);
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    box-shadow: none;
+}
+button.pill.ghost {
+    background: transparent;
+    color: var(--muted);
+}
+button.pill:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent-stroke);
+    box-shadow: none;
+}
+button.pill:active {
+    transform: translateY(0);
+}
+
+button.icon-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid var(--stroke);
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(12px);
+    color: var(--muted);
+    box-shadow: none;
+}
+button.icon-btn svg {
+    width: 18px;
+    height: 18px;
+}
+button.icon-btn:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent-stroke);
+    box-shadow: none;
+    color: var(--ink);
+}
+button.icon-btn:active {
+    transform: translateY(0);
+}
+button.icon-btn.danger {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #b91c1c;
+}
+button.icon-btn.danger:hover {
+    box-shadow: none;
+    color: #7f1d1d;
+}
 .pager,
 .pagination {
     display: flex;

@@ -81,151 +81,345 @@
                                 Download ZIP (web)
                             </a>
                         </div>
-                    </article>
 
-                    <article class="card" th:if="${currentAlbum != null}">
-                        <div class="card-head">
-                            <div>
-                                <p class="eyebrow">Manage</p>
-                                <h2>Edit album</h2>
-                            </div>
-                        </div>
-                        <form
-                            class="form stacked"
-                            th:action="@{/albums/{id}(id=${currentAlbum.id})}"
-                            method="post"
-                        >
-                            <input
-                                type="hidden"
-                                th:name="${_csrf.parameterName}"
-                                th:value="${_csrf.token}"
-                            />
-                            <input type="hidden" name="_method" value="PUT" />
-                            <input
-                                type="hidden"
-                                name="redirectTo"
-                                th:value="@{/albums/{id}(id=${currentAlbum.id})}"
-                            />
-                            <label>
-                                <span>Name</span>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    th:value="${currentAlbum.name}"
-                                    required
-                                />
-                            </label>
-                            <label>
-                                <span>Description</span>
-                                <input
-                                    type="text"
-                                    name="description"
-                                    th:value="${currentAlbum.description}"
-                                    placeholder="Optional"
-                                />
-                            </label>
-                            <label>
-                                <span>Category</span>
-                                <select name="categoryId">
-                                    <option value="">Uncategorized</option>
-                                    <option
-                                        th:each="c : ${categories}"
-                                        th:value="${c.id}"
-                                        th:text="${c.name}"
-                                        th:selected="${currentAlbum.category != null and currentAlbum.category.id == c.id}"
-                                    ></option>
-                                </select>
-                            </label>
-                            <label>
-                                <span>Visibility</span>
-                                <select name="visibility">
-                                    <option
-                                        value="private"
-                                        th:selected="${currentAlbum.visibility != null and currentAlbum.visibility.name() == 'PRIVATE'}"
-                                    >
-                                        Private
-                                    </option>
-                                    <option
-                                        value="public"
-                                        th:selected="${currentAlbum.visibility != null and currentAlbum.visibility.name() == 'PUBLIC'}"
-                                    >
-                                        Public
-                                    </option>
-                                </select>
-                            </label>
-                            <div class="actions">
-                                <button type="submit">Save album</button>
-                            </div>
-                        </form>
+                        <div th:if="${currentAlbum != null}">
+                            <hr class="divider" style="margin: 16px 0;" />
 
-                        <hr class="divider" style="margin: 16px 0;" />
-
-                        <div class="stack">
-                            <div class="card-head" style="margin: 0;">
+                            <div class="card-head align-end" style="margin: 0 0 10px;">
                                 <div>
-                                    <p class="eyebrow">Sharing</p>
-                                    <h2>Share links</h2>
+                                    <p class="eyebrow">Manage</p>
+                                    <h3>Galleries</h3>
                                 </div>
+                                <button
+                                    type="button"
+                                    class="pill ghost"
+                                    onclick="document.getElementById('new-gallery-modal').showModal()"
+                                >
+                                    + New
+                                </button>
                             </div>
 
-                            <form
-                                th:action="@{/albums/{id}/share(id=${currentAlbum.id})}"
-                                method="post"
+                            <ul
+                                class="mini-gallery-list"
+                                th:if="${galleries != null and !galleries.isEmpty()}"
                             >
-                                <input
-                                    type="hidden"
-                                    th:name="${_csrf.parameterName}"
-                                    th:value="${_csrf.token}"
-                                />
-                                <input
-                                    type="hidden"
-                                    name="redirectTo"
-                                    th:value="@{/albums/{id}(id=${currentAlbum.id})}"
-                                />
-                                <div class="actions">
-                                    <button type="submit">Create new share link</button>
-                                </div>
-                            </form>
+                                <li th:each="g : ${galleries}">
+                                    <div class="mini-gallery-row">
+                                        <a
+                                            class="mini-gallery-link"
+                                            th:href="${g.slug != null ? '/' + g.slug : '/gallery/' + g.id}"
+                                            th:text="${g.title}"
+                                        ></a>
+                                        <div class="mini-gallery-actions">
+                                            <button
+                                                type="button"
+                                                class="icon-btn"
+                                                th:attr="onclick=|document.getElementById('gallery-settings-${g.id}').showModal()|"
+                                                aria-label="Edit gallery"
+                                                title="Edit gallery"
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                    <path
+                                                        d="M4 20h4l10.5-10.5a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 16v4Z"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.8"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                    <path
+                                                        d="M13.5 6.5l4 4"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.8"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+
+                                            <form
+                                                th:action="@{/galleries/{id}(id=${g.id})}"
+                                                method="post"
+                                                onsubmit="return confirm('Delete this gallery? Any sub-galleries will be moved to the root. Photos not used in other galleries will be deleted.');"
+                                            >
+                                                <input
+                                                    type="hidden"
+                                                    th:name="${_csrf.parameterName}"
+                                                    th:value="${_csrf.token}"
+                                                />
+                                                <input type="hidden" name="_method" value="DELETE" />
+                                                <input
+                                                    type="hidden"
+                                                    name="redirectTo"
+                                                    th:value="@{/albums/{id}(id=${currentAlbum.id})}"
+                                                />
+                                                <button
+                                                    type="submit"
+                                                    class="icon-btn danger"
+                                                    aria-label="Delete gallery"
+                                                    title="Delete gallery"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                        <path
+                                                            d="M9 3h6m-8 4h10m-1 0-1 14H8L7 7"
+                                                            stroke="currentColor"
+                                                            stroke-width="1.8"
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                        />
+                                                        <path
+                                                            d="M10 11v6m4-6v6"
+                                                            stroke="currentColor"
+                                                            stroke-width="1.8"
+                                                            stroke-linecap="round"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    <dialog
+                                        class="auth-modal"
+                                        th:id="'gallery-settings-' + ${g.id}"
+                                        aria-label="Edit gallery"
+                                    >
+                                        <div class="card auth-modal-surface">
+                                            <div class="auth-modal-head">
+                                                <div>
+                                                    <p class="eyebrow">Manage</p>
+                                                    <h2 th:text="${g.title}">Gallery</h2>
+                                                </div>
+                                                <form method="dialog">
+                                                    <button type="submit" class="btn secondary">
+                                                        Close
+                                                    </button>
+                                                </form>
+                                            </div>
+
+                                            <form
+                                                class="form stacked"
+                                                th:action="@{/galleries/{id}(id=${g.id})}"
+                                                method="post"
+                                            >
+                                                <input
+                                                    type="hidden"
+                                                    th:name="${_csrf.parameterName}"
+                                                    th:value="${_csrf.token}"
+                                                />
+                                                <input type="hidden" name="_method" value="PUT" />
+                                                <input
+                                                    type="hidden"
+                                                    name="redirectTo"
+                                                    th:value="@{/albums/{id}(id=${currentAlbum.id})}"
+                                                />
+                                                <label>
+                                                    <span>Title</span>
+                                                    <input
+                                                        type="text"
+                                                        name="title"
+                                                        th:value="${g.title}"
+                                                        required
+                                                    />
+                                                </label>
+                                                <label>
+                                                    <span>Description</span>
+                                                    <input
+                                                        type="text"
+                                                        name="description"
+                                                        th:value="${g.description}"
+                                                        placeholder="Optional"
+                                                    />
+                                                </label>
+                                                <div class="actions">
+                                                    <a
+                                                        class="btn secondary"
+                                                        th:href="${g.slug != null ? '/' + g.slug : '/gallery/' + g.id}"
+                                                    >
+                                                        Open
+                                                    </a>
+                                                    <button type="submit">
+                                                        Save
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </dialog>
+                                </li>
+                            </ul>
 
                             <div
-                                class="stack"
-                                th:if="${shareTokens != null and !shareTokens.isEmpty()}"
+                                class="muted small"
+                                th:if="${galleries == null or galleries.isEmpty()}"
                             >
-                                <div th:each="t : ${shareTokens}">
-                                    <label>
-                                        <span class="muted small">Share URL</span>
-                                        <input
-                                            type="text"
-                                            readonly
-                                            th:value="@{/share/{id}(id=${t.id})}"
-                                            onclick="this.select()"
-                                        />
-                                    </label>
-                                    <form
-                                        th:action="@{/albums/{albumId}/share/{tokenId}(albumId=${currentAlbum.id}, tokenId=${t.id})}"
-                                        method="post"
-                                        onsubmit="return confirm('Revoke this share link?');"
-                                    >
+                                No galleries yet.
+                            </div>
+
+                            <dialog id="new-gallery-modal" class="auth-modal" aria-label="Create gallery">
+                                <div class="card auth-modal-surface">
+                                    <div class="auth-modal-head">
+                                        <div>
+                                            <p class="eyebrow">Galleries</p>
+                                            <h2>New gallery</h2>
+                                        </div>
+                                        <form method="dialog">
+                                            <button type="submit" class="btn secondary">
+                                                Close
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <form class="form stacked" th:action="@{/galleries}" method="post">
                                         <input
                                             type="hidden"
                                             th:name="${_csrf.parameterName}"
                                             th:value="${_csrf.token}"
                                         />
-                                        <input type="hidden" name="_method" value="DELETE" />
+                                        <input
+                                            type="hidden"
+                                            name="albumId"
+                                            th:value="${currentAlbum != null ? currentAlbum.id : ''}"
+                                        />
                                         <input
                                             type="hidden"
                                             name="redirectTo"
                                             th:value="@{/albums/{id}(id=${currentAlbum.id})}"
                                         />
+                                        <label>
+                                            <span>Title</span>
+                                            <input
+                                                type="text"
+                                                name="title"
+                                                placeholder="New gallery title"
+                                                required
+                                            />
+                                        </label>
+                                        <label>
+                                            <span>Description</span>
+                                            <input
+                                                type="text"
+                                                name="description"
+                                                placeholder="Optional"
+                                            />
+                                        </label>
                                         <div class="actions">
-                                            <button type="submit" class="danger">
-                                                Revoke link
-                                            </button>
+                                            <button type="submit">Create</button>
                                         </div>
                                     </form>
-                                    <div class="divider" style="margin-top: 12px;"></div>
                                 </div>
-                            </div>
+                            </dialog>
+                        </div>
+                         <hr class="divider" style="margin: 16px 0;" />
+	                    <div>
+	                        <div class="stack">
+	                            <div class="card-head align-end" style="margin: 0;">
+	                                <div>
+	                                    <p class="eyebrow">Sharing</p>
+	                                    <h2>Share links</h2>
+	                                </div>
+	                                <form
+	                                    th:action="@{/albums/{id}/share(id=${currentAlbum.id})}"
+	                                    method="post"
+	                                    style="margin: 0;"
+	                                >
+	                                    <input
+	                                        type="hidden"
+	                                        th:name="${_csrf.parameterName}"
+	                                        th:value="${_csrf.token}"
+	                                    />
+	                                    <input
+	                                        type="hidden"
+	                                        name="redirectTo"
+	                                        th:value="@{/albums/{id}(id=${currentAlbum.id})}"
+	                                    />
+	                                    <button type="submit" class="pill ghost">
+	                                        + New
+	                                    </button>
+	                                </form>
+	                            </div>
+	 
+	                            <ul
+	                                class="mini-gallery-list"
+	                                th:if="${shareTokens != null and !shareTokens.isEmpty()}"
+	                            >
+	                                <li th:each="t : ${shareTokens}">
+	                                    <div class="mini-gallery-row">
+	                                        <a
+	                                            class="mini-gallery-link"
+	                                            th:href="@{/share/{id}(id=${t.id})}"
+	                                            th:text="@{/share/{id}(id=${t.id})}"
+	                                            target="_blank"
+	                                            rel="noopener"
+	                                        ></a>
+	                                        <div class="mini-gallery-actions">
+	                                            <button
+	                                                type="button"
+	                                                class="icon-btn"
+	                                                aria-label="Copy share link"
+	                                                title="Copy share link"
+	                                                onclick="copyShareLink(this)"
+	                                                th:attr="data-path=@{/share/{id}(id=${t.id})}"
+	                                            >
+	                                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+	                                                    <path
+	                                                        d="M9 9h10v10a2 2 0 0 1-2 2H9V9Z"
+	                                                        stroke="currentColor"
+	                                                        stroke-width="1.8"
+	                                                        stroke-linecap="round"
+	                                                        stroke-linejoin="round"
+	                                                    />
+	                                                    <path
+	                                                        d="M5 15V7a2 2 0 0 1 2-2h8"
+	                                                        stroke="currentColor"
+	                                                        stroke-width="1.8"
+	                                                        stroke-linecap="round"
+	                                                        stroke-linejoin="round"
+	                                                    />
+	                                                </svg>
+	                                            </button>
+	 
+	                                            <form
+	                                                th:action="@{/albums/{albumId}/share/{tokenId}(albumId=${currentAlbum.id}, tokenId=${t.id})}"
+	                                                method="post"
+	                                                onsubmit="return confirm('Revoke this share link?');"
+	                                            >
+	                                                <input
+	                                                    type="hidden"
+	                                                    th:name="${_csrf.parameterName}"
+	                                                    th:value="${_csrf.token}"
+	                                                />
+	                                                <input type="hidden" name="_method" value="DELETE" />
+	                                                <input
+	                                                    type="hidden"
+	                                                    name="redirectTo"
+	                                                    th:value="@{/albums/{id}(id=${currentAlbum.id})}"
+	                                                />
+	                                                <button
+	                                                    type="submit"
+	                                                    class="icon-btn danger"
+	                                                    aria-label="Revoke share link"
+	                                                    title="Revoke share link"
+	                                                >
+	                                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+	                                                        <path
+	                                                            d="M9 3h6m-8 4h10m-1 0-1 14H8L7 7"
+	                                                            stroke="currentColor"
+	                                                            stroke-width="1.8"
+	                                                            stroke-linecap="round"
+	                                                            stroke-linejoin="round"
+	                                                        />
+	                                                        <path
+	                                                            d="M10 11v6m4-6v6"
+	                                                            stroke="currentColor"
+	                                                            stroke-width="1.8"
+	                                                            stroke-linecap="round"
+	                                                        />
+	                                                    </svg>
+	                                                </button>
+	                                            </form>
+	                                        </div>
+	                                    </div>
+	                                </li>
+	                            </ul>
 
                             <div
                                 class="muted small"
@@ -233,29 +427,10 @@
                             >
                                 No share links yet.
                             </div>
-                        </div>
 
-                        <form
-                            th:action="@{/albums/{id}(id=${currentAlbum.id})}"
-                            method="post"
-                            onsubmit="return confirm('Delete this album? This will delete its galleries and photos not used elsewhere.');"
-                        >
-                            <input
-                                type="hidden"
-                                th:name="${_csrf.parameterName}"
-                                th:value="${_csrf.token}"
-                            />
-                            <input type="hidden" name="_method" value="DELETE" />
-                            <input type="hidden" name="redirectTo" value="/dashboard" />
-                            <div class="actions">
-                                <button type="submit" class="danger">
-                                    Delete album
-                                </button>
-                            </div>
-                        </form>
                     </article>
 
-                </section>
+                                </section>
 
                 <!-- Main content -->
                 <section class="column main">
@@ -290,94 +465,32 @@
                         </a>
                     </div>
 
-                    <article class="card" th:if="${currentAlbum != null}">
-                        <div class="card-head">
-                            <div>
-                                <p class="eyebrow">Manage</p>
-                                <h2>Galleries</h2>
-                            </div>
-                        </div>
-                        <form class="form inline" th:action="@{/galleries}" method="post">
-                            <input
-                                type="hidden"
-                                th:name="${_csrf.parameterName}"
-                                th:value="${_csrf.token}"
-                            />
-                            <input
-                                type="hidden"
-                                name="albumId"
-                                th:value="${currentAlbum != null ? currentAlbum.id : ''}"
-                            />
-                            <input
-                                type="hidden"
-                                name="redirectTo"
-                                th:value="@{/albums/{id}(id=${currentAlbum.id})}"
-                            />
-                            <input
-                                type="text"
-                                name="title"
-                                placeholder="New gallery title"
-                                required
-                            />
-                            <input
-                                type="text"
-                                name="description"
-                                placeholder="Optional description"
-                            />
-                            <button type="submit">+ New gallery</button>
-                        </form>
-                        <div class="stack">
-                            <div
-                                th:each="g : ${galleries}"
-                                style="padding: 12px 0;"
-                            >
-                                <div style="display: flex; justify-content: space-between; gap: 12px; align-items: center;">
-                                    <div class="stack">
-                                        <div class="strong small" th:text="${g.title}"></div>
-                                        <div class="muted small">
-                                            <a
-                                                class="pill ghost"
-                                                th:href="${g.slug != null ? '/' + g.slug : '/gallery/' + g.id}"
-                                            >
-                                                Open &amp; edit
-                                            </a>
-                                        </div>
-                                    </div>
-
-                                    <form
-                                        th:action="@{/galleries/{id}(id=${g.id})}"
-                                        method="post"
-                                        onsubmit="return confirm('Delete this gallery? Any sub-galleries will be moved to the root. Photos not used in other galleries will be deleted.');"
-                                    >
-                                        <input
-                                            type="hidden"
-                                            th:name="${_csrf.parameterName}"
-                                            th:value="${_csrf.token}"
-                                        />
-                                        <input type="hidden" name="_method" value="DELETE" />
-                                        <input
-                                            type="hidden"
-                                            name="redirectTo"
-                                            th:value="@{/albums/{id}(id=${currentAlbum.id})}"
-                                        />
-                                        <button type="submit" class="danger">
-                                            Delete
-                                        </button>
-                                    </form>
-                                </div>
-                                <div class="divider" style="margin-top: 12px;"></div>
-                            </div>
-                        </div>
-                        <div
-                            class="muted small"
-                            th:if="${galleries == null or galleries.isEmpty()}"
-                        >
-                            No galleries yet.
-                        </div>
-                    </article>
+                    <div class="muted small" th:if="${galleries == null or galleries.isEmpty()}">
+                        No galleries yet.
+                    </div>
                 </section>
-                </div>
-            </main>
-        </div>
-    </body>
+	                </div>
+	            </main>
+	        </div>
+	
+	        <script>
+	            async function copyShareLink(button) {
+	                const path = button?.getAttribute("data-path");
+	                if (!path) return;
+	
+	                const url = new URL(path, window.location.origin).toString();
+	
+	                try {
+	                    await navigator.clipboard.writeText(url);
+	                    const prevTitle = button.title;
+	                    button.title = "Copied!";
+	                    setTimeout(() => {
+	                        button.title = prevTitle;
+	                    }, 1200);
+	                } catch (e) {
+	                    window.prompt("Copy this link:", url);
+	                }
+	            }
+	        </script>
+	    </body>
 </html>
