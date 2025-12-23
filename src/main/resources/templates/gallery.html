@@ -333,9 +333,6 @@
                             </div>
 
                             <div th:case="4">
-                                <p class="muted small">
-                                    Add photos now, or you can do it later.
-                                </p>
                                 <div
                                     class="chip ghost"
                                     th:if="${currentGallery != null}"
@@ -419,11 +416,6 @@
                         </div>
 
                         <div class="stack" style="align-items: flex-end;">
-                            <a
-                                class="pill ghost"
-                                th:href="${currentAlbum != null ? '/albums/' + currentAlbum.id : '/dashboard'}"
-                                th:text="${currentAlbum != null ? 'Back to album' : 'Back to dashboard'}"
-                            ></a>
                             <div class="sorter" th:if="${currentGallery != null}">
                                 <label class="muted small">Sort</label>
                                 <select
@@ -474,80 +466,6 @@
                                     </option>
                                 </select>
                             </div>
-
-                            <details class="manage" th:if="${currentGallery != null}">
-                                <summary class="pill ghost">
-                                    Manage gallery
-                                </summary>
-
-                                <form
-                                    class="form stacked"
-                                    th:action="@{/galleries/{id}(id=${currentGallery.id})}"
-                                    method="post"
-                                >
-                                    <input
-                                        type="hidden"
-                                        th:name="${_csrf.parameterName}"
-                                        th:value="${_csrf.token}"
-                                    />
-                                    <input type="hidden" name="_method" value="PUT" />
-                                    <input
-                                        type="hidden"
-                                        name="redirectTo"
-                                        value="/{gallerySlug}"
-                                    />
-                                    <label>
-                                        <span>Title</span>
-                                        <input
-                                            type="text"
-                                            name="title"
-                                            th:value="${currentGallery.title}"
-                                            required
-                                        />
-                                    </label>
-                                    <label>
-                                        <span>Description</span>
-                                        <input
-                                            type="text"
-                                            name="description"
-                                            th:value="${currentGallery.description}"
-                                            placeholder="Optional"
-                                        />
-                                    </label>
-                                    <label>
-                                        <span>Visibility</span>
-                                        <input
-                                            type="text"
-                                            readonly
-                                            th:value="${currentAlbum != null ? currentAlbum.visibility : currentGallery.visibility}"
-                                        />
-                                    </label>
-                                    <div class="actions">
-                                        <button type="submit">
-                                            Save changes
-                                        </button>
-                                    </div>
-                                </form>
-
-                                <form
-                                    th:action="@{/galleries/{id}(id=${currentGallery.id})}"
-                                    method="post"
-                                    onsubmit="return confirm('Delete this gallery? Any sub-galleries will be moved to the root. Photos not used in other galleries will be deleted.');"
-                                >
-                                    <input
-                                        type="hidden"
-                                        th:name="${_csrf.parameterName}"
-                                        th:value="${_csrf.token}"
-                                    />
-                                    <input type="hidden" name="_method" value="DELETE" />
-                                    <input type="hidden" name="redirectTo" value="/dashboard" />
-                                    <div class="actions">
-                                        <button type="submit" class="danger">
-                                            Delete gallery
-                                        </button>
-                                    </div>
-                                </form>
-                            </details>
                         </div>
                     </div>
                 </article>
@@ -568,16 +486,35 @@
                             />
                             <div class="overlay">
                                 <div>
-                                    <div
-                                        class="muted small"
-                                        th:if="${photo.camera}"
-                                        th:text="${photo.camera}"
-                                    ></div>
-                                    <div
-                                        class="muted small"
-                                        th:if="${photo.dateTaken}"
-                                        th:text="${photo.dateTaken}"
-                                    ></div>
+                                    <a
+                                        class="icon-btn"
+                                        th:href="@{/photos/{id}/download(id=${photo.id}, variant='original')}"
+                                        download
+                                        aria-label="Download original"
+                                        title="Download original"
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                            <path
+                                                d="M12 3v10"
+                                                stroke="currentColor"
+                                                stroke-width="1.8"
+                                                stroke-linecap="round"
+                                            />
+                                            <path
+                                                d="M8 11l4 4 4-4"
+                                                stroke="currentColor"
+                                                stroke-width="1.8"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                            <path
+                                                d="M4 20h16"
+                                                stroke="currentColor"
+                                                stroke-width="1.8"
+                                                stroke-linecap="round"
+                                            />
+                                        </svg>
+                                    </a>
                                 </div>
                                 <form
                                     th:action="@{/photo/{id}/delete(id=${photo.id})}"
@@ -612,11 +549,6 @@
                                 class="strong small"
                                 th:text="${photo.originalName}"
                             ></div>
-                            <div
-                                class="muted small"
-                                th:if="${photo.imageWidth != null and photo.imageHeight != null}"
-                                th:text="${photo.imageWidth} + '×' + ${photo.imageHeight}"
-                            ></div>
                         </div>
                     </div>
                 </div>
@@ -643,12 +575,6 @@
             <div class="lightbox-inner">
                 <div class="lightbox-bar">
                     <div class="lightbox-title" id="lightboxTitle"></div>
-                    <a class="pill ghost" id="lightboxDownloadWeb" href="#" download>
-                        Download web
-                    </a>
-                    <a class="pill ghost" id="lightboxDownloadOriginal" href="#" download>
-                        Download original
-                    </a>
                     <button class="lightbox-close" id="lightboxClose">
                         Close
                     </button>
@@ -664,31 +590,22 @@
                 const img = document.getElementById('lightboxImg');
                 const title = document.getElementById('lightboxTitle');
                 const closeBtn = document.getElementById('lightboxClose');
-                const dlWeb = document.getElementById('lightboxDownloadWeb');
-                const dlOrig = document.getElementById('lightboxDownloadOriginal');
                 if (!grid || !box || !img) return;
 
                 function openLightbox(src, caption, photoId) {
                     img.src = src;
                     title.textContent = caption || '';
-                    if (dlWeb && photoId) {
-                        dlWeb.href = `/photos/${photoId}/download?variant=web`;
-                    }
-                    if (dlOrig && photoId) {
-                        dlOrig.href = `/photos/${photoId}/download?variant=original`;
-                    }
                     box.classList.add('open');
                     document.body.style.overflow = 'hidden';
                 }
                 function closeLightbox() {
                     box.classList.remove('open');
                     img.src = '';
-                    if (dlWeb) dlWeb.href = '#';
-                    if (dlOrig) dlOrig.href = '#';
                     document.body.style.overflow = '';
                 }
 
                 grid.addEventListener('click', (e) => {
+                    if (e.target.closest('a,button,form,input')) return;
                     const tile = e.target.closest('.tile');
                     if (!tile) return;
                     const full = tile.getAttribute('data-full');

@@ -1,12 +1,18 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title th:text="${currentAlbum != null ? currentAlbum.name + ' — Album' : 'Album'}"></title>
-        <link rel="stylesheet" th:href="@{/css/style.css}" />
-    </head>
-    <body class="page">
+	    <head>
+	        <meta charset="UTF-8" />
+	        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	        <title th:text="${currentAlbum != null ? currentAlbum.name + ' — Album' : 'Album'}"></title>
+	        <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}" />
+	        <meta
+	            name="_csrf_header"
+	            th:if="${_csrf != null}"
+	            th:content="${_csrf.headerName}"
+	        />
+	        <link rel="stylesheet" th:href="@{/css/style.css}" />
+	    </head>
+	    <body class="page">
         <div class="bg-mesh"></div>
         <div class="shell app-shell">
             <header class="app-nav">
@@ -254,26 +260,31 @@
                                 No galleries yet.
                             </div>
 
-                            <dialog id="new-gallery-modal" class="auth-modal" aria-label="Create gallery">
-                                <div class="card auth-modal-surface">
-                                    <div class="auth-modal-head">
-                                        <div>
-                                            <p class="eyebrow">Galleries</p>
-                                            <h2>New gallery</h2>
-                                        </div>
-                                        <form method="dialog">
-                                            <button type="submit" class="btn secondary">
-                                                Close
-                                            </button>
-                                        </form>
-                                    </div>
+	                            <dialog id="new-gallery-modal" class="auth-modal" aria-label="Create gallery">
+	                                <div class="card auth-modal-surface">
+	                                    <div class="auth-modal-head">
+	                                        <div>
+	                                            <p class="eyebrow">Galleries</p>
+	                                            <h2>New gallery</h2>
+	                                        </div>
+	                                        <form method="dialog">
+	                                            <button type="submit" class="btn secondary">
+	                                                Close
+	                                            </button>
+	                                        </form>
+	                                    </div>
 
-                                    <form class="form stacked" th:action="@{/galleries}" method="post">
-                                        <input
-                                            type="hidden"
-                                            th:name="${_csrf.parameterName}"
-                                            th:value="${_csrf.token}"
-                                        />
+	                                    <form
+	                                        class="form stacked"
+	                                        id="newGalleryForm"
+	                                        th:action="@{/galleries}"
+	                                        method="post"
+	                                    >
+	                                        <input
+	                                            type="hidden"
+	                                            th:name="${_csrf.parameterName}"
+	                                            th:value="${_csrf.token}"
+	                                        />
                                         <input
                                             type="hidden"
                                             name="albumId"
@@ -294,19 +305,47 @@
                                             />
                                         </label>
                                         <label>
-                                            <span>Description</span>
-                                            <input
-                                                type="text"
-                                                name="description"
-                                                placeholder="Optional"
-                                            />
-                                        </label>
-                                        <div class="actions">
-                                            <button type="submit">Create</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </dialog>
+	                                            <span>Description</span>
+	                                            <input
+	                                                type="text"
+	                                                name="description"
+	                                                placeholder="Optional"
+	                                            />
+	                                        </label>
+	                                        <hr class="divider" style="margin: 12px 0;" />
+	                                        <div class="muted small">
+	                                            Optional: upload a few photos now (you can add more later).
+	                                        </div>
+	                                        <label>
+	                                            <span>Photos</span>
+	                                            <input
+	                                                type="file"
+	                                                id="newGalleryFileInput"
+	                                                multiple
+	                                                accept="image/*"
+	                                            />
+	                                        </label>
+	                                        <label>
+	                                            <span>On duplicates</span>
+	                                            <select id="newGalleryDuplicateMode">
+	                                                <option value="cancel" selected>
+	                                                    Stop (default)
+	                                                </option>
+	                                                <option value="skip">Skip duplicates</option>
+	                                                <option value="overwrite">
+	                                                    Overwrite duplicates
+	                                                </option>
+	                                            </select>
+	                                        </label>
+	                                        <div class="muted small" id="newGalleryUploadStatus"></div>
+	                                        <div class="actions">
+	                                            <button type="submit" id="newGallerySubmit">
+	                                                Create
+	                                            </button>
+	                                        </div>
+	                                    </form>
+	                                </div>
+	                            </dialog>
                         </div>
                          <hr class="divider" style="margin: 16px 0;" />
 	                    <div>
@@ -491,6 +530,192 @@
 	                    window.prompt("Copy this link:", url);
 	                }
 	            }
+	        </script>
+
+	        <script>
+	            (function () {
+	                const form = document.getElementById('newGalleryForm');
+	                const fileInput = document.getElementById('newGalleryFileInput');
+	                const duplicateMode = document.getElementById(
+	                    'newGalleryDuplicateMode'
+	                );
+	                const statusEl = document.getElementById('newGalleryUploadStatus');
+	                const submitBtn = document.getElementById('newGallerySubmit');
+	                if (!form || !fileInput) return;
+
+	                const csrfToken =
+	                    document
+	                        .querySelector('meta[name="_csrf"]')
+	                        ?.getAttribute('content') || null;
+	                const csrfHeader =
+	                    document
+	                        .querySelector('meta[name="_csrf_header"]')
+	                        ?.getAttribute('content') || 'X-CSRF-TOKEN';
+
+	                function setStatus(text) {
+	                    if (!statusEl) return;
+	                    statusEl.textContent = text || '';
+	                }
+
+	                async function readError(response) {
+	                    const contentType = response.headers.get('content-type') || '';
+	                    if (contentType.includes('application/json')) {
+	                        try {
+	                            const json = await response.json();
+	                            return json?.message || JSON.stringify(json);
+	                        } catch {
+	                            return 'Request failed';
+	                        }
+	                    }
+	                    try {
+	                        return await response.text();
+	                    } catch {
+	                        return 'Request failed';
+	                    }
+	                }
+
+	                function updateSubmitText() {
+	                    if (!submitBtn) return;
+	                    const count = (fileInput.files || []).length;
+	                    submitBtn.textContent = count > 0 ? 'Create + Upload' : 'Create';
+	                }
+	                fileInput.addEventListener('change', updateSubmitText);
+	                updateSubmitText();
+
+	                form.addEventListener('submit', async (e) => {
+	                    const files = Array.from(fileInput.files || []);
+	                    if (files.length === 0) return; // normal form post
+
+	                    // If we don't have CSRF info, fall back to normal form post.
+	                    if (!csrfToken) return;
+
+	                    e.preventDefault();
+	                    setStatus(`Creating gallery + uploading ${files.length} photo(s)…`);
+
+	                    if (submitBtn) submitBtn.disabled = true;
+
+	                    const title = form.querySelector('input[name="title"]')?.value;
+	                    const description = form.querySelector(
+	                        'input[name="description"]'
+	                    )?.value;
+	                    const albumId = form.querySelector('input[name="albumId"]')?.value;
+
+	                    if (!title || !String(title).trim()) {
+	                        setStatus('Title is required.');
+	                        if (submitBtn) submitBtn.disabled = false;
+	                        return;
+	                    }
+
+	                    try {
+	                        const params = new URLSearchParams();
+	                        params.set('title', title);
+	                        if (description) params.set('description', description);
+	                        if (albumId) params.set('albumId', albumId);
+
+	                        const createResp = await fetch(
+	                            `/api/galleries?${params.toString()}`,
+	                            {
+	                                method: 'POST',
+	                                credentials: 'same-origin',
+	                                headers: {
+	                                    [csrfHeader]: csrfToken,
+	                                },
+	                            }
+	                        );
+	                        if (!createResp.ok) {
+	                            const err = await readError(createResp);
+	                            setStatus(`Failed to create gallery: ${err}`);
+	                            if (submitBtn) submitBtn.disabled = false;
+	                            return;
+	                        }
+
+	                        const gallery = await createResp.json();
+	                        const galleryId = gallery?.id;
+	                        if (!galleryId) {
+	                            setStatus('Gallery created but missing id; refresh and try again.');
+	                            if (submitBtn) submitBtn.disabled = false;
+	                            return;
+	                        }
+
+	                        const mode = duplicateMode?.value || 'cancel';
+	                        let success = 0;
+	                        let skipped = 0;
+	                        let failed = 0;
+
+	                        for (let index = 0; index < files.length; index++) {
+	                            const file = files[index];
+	                            setStatus(
+	                                `Uploading ${index + 1}/${files.length}: ${file.name}…`
+	                            );
+
+	                            try {
+	                                const formData = new FormData();
+	                                formData.append('file', file);
+
+	                                const uploadResp = await fetch(
+	                                    `/api/photos?onDuplicate=${encodeURIComponent(
+	                                        mode
+	                                    )}&galleryId=${encodeURIComponent(galleryId)}`,
+	                                    {
+	                                        method: 'POST',
+	                                        body: formData,
+	                                        credentials: 'same-origin',
+	                                        headers: {
+	                                            [csrfHeader]: csrfToken,
+	                                        },
+	                                    }
+	                                );
+
+	                                if (!uploadResp.ok) {
+	                                    const err = await readError(uploadResp);
+	                                    if (
+	                                        uploadResp.status === 400 &&
+	                                        String(err).toLowerCase().includes('duplicate')
+	                                    ) {
+	                                        skipped++;
+	                                        continue;
+	                                    }
+	                                    failed++;
+	                                    continue;
+	                                }
+
+	                                const photo = await uploadResp.json();
+	                                const linkResp = await fetch(
+	                                    `/api/galleries/${encodeURIComponent(
+	                                        galleryId
+	                                    )}/photos/${encodeURIComponent(photo.id)}`,
+	                                    {
+	                                        method: 'POST',
+	                                        credentials: 'same-origin',
+	                                        headers: {
+	                                            [csrfHeader]: csrfToken,
+	                                        },
+	                                    }
+	                                );
+	                                if (!linkResp.ok) {
+	                                    failed++;
+	                                    continue;
+	                                }
+
+	                                success++;
+	                            } catch (err) {
+	                                failed++;
+	                            }
+	                        }
+
+	                        setStatus(
+	                            `Done. Uploaded ${success}, skipped ${skipped}, failed ${failed}. Redirecting…`
+	                        );
+	                        const redirectUrl = gallery?.slug
+	                            ? `/${gallery.slug}`
+	                            : `/gallery/${galleryId}`;
+	                        window.location.assign(redirectUrl);
+	                    } catch (err) {
+	                        setStatus('Upload failed; refresh and try again.');
+	                        if (submitBtn) submitBtn.disabled = false;
+	                    }
+	                });
+	            })();
 	        </script>
 	    </body>
 </html>

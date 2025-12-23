@@ -216,7 +216,25 @@ button.icon-btn {
     color: var(--muted);
     box-shadow: none;
 }
+a.icon-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid var(--stroke);
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(12px);
+    color: var(--muted);
+    box-shadow: none;
+}
 button.icon-btn svg {
+    width: 18px;
+    height: 18px;
+}
+a.icon-btn svg {
     width: 18px;
     height: 18px;
 }
@@ -226,7 +244,16 @@ button.icon-btn:hover {
     box-shadow: none;
     color: var(--ink);
 }
+a.icon-btn:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent-stroke);
+    box-shadow: none;
+    color: var(--ink);
+}
 button.icon-btn:active {
+    transform: translateY(0);
+}
+a.icon-btn:active {
     transform: translateY(0);
 }
 button.icon-btn.danger {
