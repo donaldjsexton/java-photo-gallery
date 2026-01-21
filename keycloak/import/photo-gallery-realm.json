@@ -4,24 +4,23 @@
   "loginTheme": "photo-gallery",
   "clients": [
     {
-      "clientId": "photo-gallery",
-      "name": "Photo Gallery",
-      "enabled": true,
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "secret": "change-me",
-      "redirectUris": [
-        "http://localhost:8090/login/oauth2/code/keycloak"
-      ],
-      "webOrigins": [
-        "http://localhost:8090"
-      ],
-      "attributes": {
-        "post.logout.redirect.uris": "http://localhost:8090/*"
-      }
-    }
+  "clientId": "photo-gallery",
+  "name": "Photo Gallery",
+  "enabled": true,
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "standardFlowEnabled": true,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": false,
+  "redirectUris": [
+    "https://delivery.donaldsextonphotography.com/login/oauth2/code/keycloak"
+  ],
+  "webOrigins": [
+    "https://delivery.donaldsextonphotography.com"
+  ],
+  "attributes": {
+    "post.logout.redirect.uris": "https://delivery.donaldsextonphotography.com/*"
+  }
+}
   ]
 }

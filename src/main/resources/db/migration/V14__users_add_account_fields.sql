@@ -1,0 +1,27 @@
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS username VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS role VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS enabled BOOLEAN;
+
+UPDATE users
+SET username = email
+WHERE username IS NULL;
+
+UPDATE users
+SET role = 'CLIENT'
+WHERE role IS NULL;
+
+UPDATE users
+SET enabled = TRUE
+WHERE enabled IS NULL;
+
+ALTER TABLE users
+    ALTER COLUMN username SET NOT NULL,
+    ALTER COLUMN role SET NOT NULL,
+    ALTER COLUMN enabled SET NOT NULL;
+
+ALTER TABLE users
+    ALTER COLUMN role SET DEFAULT 'CLIENT',
+    ALTER COLUMN enabled SET DEFAULT TRUE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users (username);

@@ -9,7 +9,7 @@
         return;
       }
 
-      window.location.assign("/oauth2/authorization/keycloak");
+      window.location.assign("/login");
     });
   }
 
@@ -41,4 +41,3 @@
     }
   });
 })();
-

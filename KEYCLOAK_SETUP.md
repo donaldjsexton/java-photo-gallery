@@ -1,4 +1,4 @@
-# Keycloak (local dev)
+# Keycloak (production-ready local setup)
 
 ## 1) Start Keycloak
 
@@ -10,10 +10,18 @@ docker compose -f docker-compose.keycloak.yml up
 
 Then open `http://localhost:8080` and log in with:
 
-- username: `admin`
-- password: `admin`
+- username: `admin` (override with `KEYCLOAK_ADMIN`)
+- password: `admin` (override with `KEYCLOAK_ADMIN_PASSWORD`)
 
-This compose file imports a realm named `photo-gallery` and a confidential OIDC client named `photo-gallery`.
+This compose file uses a persistent Postgres database and imports a realm named
+`photo-gallery` with a confidential OIDC client named `photo-gallery`.
+
+If you want non-default DB creds, set:
+
+```bash
+export KEYCLOAK_DB_USER=keycloak
+export KEYCLOAK_DB_PASSWORD=keycloak
+```
 
 ## Login styling (Keycloak theme)
 
@@ -56,3 +64,8 @@ Then start the app and visit `http://localhost:8090/login`.
 
 If you see “Invalid redirect uri” on sign out:
 - In Keycloak admin → Clients → `photo-gallery` → Logout settings, add `http://localhost:8090/*` (or at least `http://localhost:8090/login?logout`) to “Valid post logout redirect URIs”.
+
+## Production notes
+
+- Set `KC_HOSTNAME` to your public hostname and terminate TLS at a reverse proxy.
+- If running behind a proxy, keep `KC_PROXY=edge` and ensure proxy headers are correct.

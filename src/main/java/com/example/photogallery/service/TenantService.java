@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -100,16 +99,6 @@ public class TenantService {
         Object principal = auth.getPrincipal();
         if (principal instanceof UserDetails userDetails) {
             return userDetails.getUsername();
-        }
-        if (principal instanceof OAuth2User oauth2User) {
-            String email = oauth2User.getAttribute("email");
-            if (StringUtils.hasText(email)) return email;
-
-            String preferredUsername = oauth2User.getAttribute("preferred_username");
-            if (StringUtils.hasText(preferredUsername)) return preferredUsername;
-
-            String subject = oauth2User.getName();
-            if (StringUtils.hasText(subject)) return subject;
         }
         if (principal instanceof String s && StringUtils.hasText(s)) {
             if (!"anonymousUser".equalsIgnoreCase(s)) return s;

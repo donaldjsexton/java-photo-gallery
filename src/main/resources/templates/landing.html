@@ -36,18 +36,12 @@
                             <p class="eyebrow">Account</p>
                             <a
                                 class="btn primary wide"
-                                th:href="@{/oauth2/authorization/keycloak}"
+                                th:href="@{/login}"
                             >
-                                Continue with Keycloak
-                            </a>
-                            <a
-                                class="btn secondary wide"
-                                th:href="@{/oauth2/authorization/keycloak(prompt='login')}"
-                            >
-                                Use a different account
+                                Sign in
                             </a>
                             <p class="muted small">
-                                Sign in uses your Keycloak SSO session. If you just signed out, use “different account” to force a fresh login.
+                                Sign in with your local account to manage galleries.
                             </p>
                         </div>
                     </details>
@@ -188,7 +182,7 @@
                         <p class="eyebrow">Account</p>
                         <h2>Sign in</h2>
                         <p class="muted small">
-                            Continue with your Keycloak account.
+                            Sign in with your local account.
                         </p>
                     </div>
                     <form method="dialog">
@@ -201,20 +195,14 @@
                 <div class="auth-modal-actions">
                     <a
                         class="btn primary wide"
-                        th:href="@{/oauth2/authorization/keycloak}"
+                        th:href="@{/login}"
                     >
-                        Continue with Keycloak
-                    </a>
-                    <a
-                        class="btn secondary wide"
-                        th:href="@{/oauth2/authorization/keycloak(prompt='login')}"
-                    >
-                        Use a different account
+                        Sign in
                     </a>
                 </div>
 
                 <p class="muted small" style="margin: 10px 0 0;">
-                    Tip: If Keycloak auto-logs you back in after signing out, “different account” will pass prompt=login.
+                    Access is protected by local, session-based authentication.
                 </p>
             </div>
         </dialog>
