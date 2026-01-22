@@ -158,7 +158,7 @@ public class GalleryService {
     public Gallery getGallery(Long id) {
         Tenant tenant = resolveTenant();
         return galleryRepository
-            .findByIdAndTenant(id, tenant)
+            .findByIdAndTenantWithAlbum(id, tenant)
             .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
     }
 
@@ -172,12 +172,12 @@ public class GalleryService {
         try {
             UUID publicId = UUID.fromString(trimmed);
             return galleryRepository
-                .findByTenantAndPublicId(tenant, publicId)
+                .findByTenantAndPublicIdWithAlbum(tenant, publicId)
                 .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
         } catch (IllegalArgumentException ignored) {}
 
         return galleryRepository
-            .findByTenantAndSlug(tenant, trimmed)
+            .findByTenantAndSlugWithAlbum(tenant, trimmed)
             .orElseThrow(() -> new NoSuchElementException("Gallery not found"));
     }
 
@@ -186,7 +186,6 @@ public class GalleryService {
     }
 
     public List<Gallery> getRootGalleriesForAlbum(Long albumId) {
-        Tenant tenant = resolveTenant();
         Album album = albumService.getById(albumId);
         return getRootGalleriesForAlbum(album);
     }
@@ -202,6 +201,7 @@ public class GalleryService {
     public List<Gallery> getChildren(Long id) {
         return galleryRepository.findByTenantAndParentId(resolveTenant(), id);
     }
+    
 
     // ---- Update ----
 

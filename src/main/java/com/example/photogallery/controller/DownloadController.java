@@ -8,10 +8,10 @@ import com.example.photogallery.service.AlbumService;
 import com.example.photogallery.service.DownloadService;
 import com.example.photogallery.service.PhotoVariant;
 import com.example.photogallery.service.TenantService;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.NoSuchElementException;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -43,7 +43,7 @@ public class DownloadController {
     }
 
     @GetMapping("/photos/{photoId}/image")
-    public ResponseEntity<FileSystemResource> viewPhoto(
+    public ResponseEntity<StreamingResponseBody> viewPhoto(
         @PathVariable("photoId") Long photoId,
         @RequestParam(value = "variant", required = false) String variant
     ) throws IOException {
@@ -53,9 +53,10 @@ public class DownloadController {
             .orElseThrow(() -> new NoSuchElementException("Photo not found"));
 
         PhotoVariant v = PhotoVariant.fromString(variant);
-        var resolved = downloadService.resolveForDownload(tenant, photo, v);
-        FileSystemResource resource = new FileSystemResource(resolved.path());
-        if (!resource.exists()) {
+        DownloadService.ResolvedDownload resolved;
+        try {
+            resolved = downloadService.openForDownload(tenant, photo, v);
+        } catch (FileNotFoundException e) {
             throw new NoSuchElementException("Photo file not found");
         }
 
@@ -63,6 +64,11 @@ public class DownloadController {
         String dispositionType = downloadService.isInlineSafe(mediaType)
             ? "inline"
             : "attachment";
+        StreamingResponseBody body = out -> {
+            try (var in = resolved.stream()) {
+                in.transferTo(out);
+            }
+        };
 
         return ResponseEntity
             .ok()
@@ -72,11 +78,11 @@ public class DownloadController {
                 HttpHeaders.CONTENT_DISPOSITION,
                 dispositionType + "; filename=\"" + resolved.fileName() + "\""
             )
-            .body(resource);
+            .body(body);
     }
 
     @GetMapping("/photos/{photoId}/download")
-    public ResponseEntity<FileSystemResource> downloadPhoto(
+    public ResponseEntity<StreamingResponseBody> downloadPhoto(
         @PathVariable("photoId") Long photoId,
         @RequestParam(value = "variant", required = false) String variant
     ) throws IOException {
@@ -86,11 +92,17 @@ public class DownloadController {
             .orElseThrow(() -> new NoSuchElementException("Photo not found"));
 
         PhotoVariant v = PhotoVariant.fromString(variant);
-        var resolved = downloadService.resolveForDownload(tenant, photo, v);
-        FileSystemResource resource = new FileSystemResource(resolved.path());
-        if (!resource.exists()) {
+        DownloadService.ResolvedDownload resolved;
+        try {
+            resolved = downloadService.openForDownload(tenant, photo, v);
+        } catch (FileNotFoundException e) {
             throw new NoSuchElementException("Photo file not found");
         }
+        StreamingResponseBody body = out -> {
+            try (var in = resolved.stream()) {
+                in.transferTo(out);
+            }
+        };
 
         return ResponseEntity
             .ok()
@@ -100,7 +112,7 @@ public class DownloadController {
                 HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"" + resolved.fileName() + "\""
             )
-            .body(resource);
+            .body(body);
     }
 
     @GetMapping("/albums/{albumId}/download.zip")

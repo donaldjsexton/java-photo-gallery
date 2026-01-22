@@ -22,6 +22,23 @@ public interface GalleryPhotoRepository
         Tenant tenant
     );
 
+    @Query(
+        """
+        SELECT gp FROM GalleryPhoto gp
+        JOIN FETCH gp.photo p
+        WHERE gp.gallery.id = :galleryId
+          AND gp.tenant = :tenant
+        ORDER BY
+            CASE WHEN gp.sortOrder IS NULL THEN 1 ELSE 0 END,
+            gp.sortOrder ASC,
+            gp.addedAt ASC
+        """
+    )
+    List<GalleryPhoto> findByGalleryIdAndTenantWithPhotoOrderBySortOrderAscAddedAtAsc(
+        @Param("galleryId") Long galleryId,
+        @Param("tenant") Tenant tenant
+    );
+
     Optional<GalleryPhoto> findFirstByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc(
         Long galleryId,
         Tenant tenant

@@ -39,6 +39,30 @@ public interface GalleryRepository extends JpaRepository<Gallery, Long> {
     Optional<Gallery> findByTenantAndSlug(Tenant tenant, String slug);
     boolean existsByTenantAndSlug(Tenant tenant, String slug);
 
+    @Query(
+        "SELECT g FROM Gallery g JOIN FETCH g.album WHERE g.id = :id AND g.tenant = :tenant"
+    )
+    Optional<Gallery> findByIdAndTenantWithAlbum(
+        @Param("id") Long id,
+        @Param("tenant") Tenant tenant
+    );
+
+    @Query(
+        "SELECT g FROM Gallery g JOIN FETCH g.album WHERE g.tenant = :tenant AND g.publicId = :publicId"
+    )
+    Optional<Gallery> findByTenantAndPublicIdWithAlbum(
+        @Param("tenant") Tenant tenant,
+        @Param("publicId") UUID publicId
+    );
+
+    @Query(
+        "SELECT g FROM Gallery g JOIN FETCH g.album WHERE g.tenant = :tenant AND g.slug = :slug"
+    )
+    Optional<Gallery> findByTenantAndSlugWithAlbum(
+        @Param("tenant") Tenant tenant,
+        @Param("slug") String slug
+    );
+
     @Modifying
     @Query(
         "UPDATE Gallery g SET g.coverPhoto = null WHERE g.tenant = :tenant AND g.coverPhoto.id = :photoId"

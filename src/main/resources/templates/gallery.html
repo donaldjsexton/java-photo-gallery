@@ -752,7 +752,7 @@
                         `Done. Uploaded ${success}, skipped ${skipped}, failed ${failed}. Redirecting…`
                     );
                     const redirectUrl =
-                        /*[[${currentGallery != null and currentGallery.slug != null ? '/' + currentGallery.slug : '/gallery/' + currentGallery.id}]]*/ '/';
+                        /*[[${currentGallery != null ? (currentGallery.slug != null ? '/' + currentGallery.slug : '/gallery/' + currentGallery.id) : '/'}]]*/ '/';
                     window.location.assign(redirectUrl);
                 });
             })();

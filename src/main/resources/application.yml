@@ -1,7 +1,9 @@
 server:
   port: 8090
   error:
-    include-message: never
+    include-exception: true
+    include-message: always
+    include-stacktrace: always
 
 spring:
   profiles:

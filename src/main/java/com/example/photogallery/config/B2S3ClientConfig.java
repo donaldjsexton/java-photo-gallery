@@ -2,14 +2,14 @@ package com.example.photogallery.config;
 
 import java.net.URI;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Configuration
 @ConditionalOnProperty(
@@ -20,10 +20,10 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
         "B2_S3_ENDPOINT"
     }
 )
-public class B2S3PresignerConfig {
+public class B2S3ClientConfig {
 
     @Bean
-    public S3Presigner s3Presigner(
+    public S3Client s3Client(
         @Value("${B2_ACCESS_KEY_ID}") String accessKeyId,
         @Value("${B2_SECRET_ACCESS_KEY}") String secretAccessKey,
         @Value("${B2_REGION}") String region,
@@ -34,7 +34,7 @@ public class B2S3PresignerConfig {
             secretAccessKey
         );
 
-        return S3Presigner
+        return S3Client
             .builder()
             .credentialsProvider(StaticCredentialsProvider.create(credentials))
             .region(Region.of(region))

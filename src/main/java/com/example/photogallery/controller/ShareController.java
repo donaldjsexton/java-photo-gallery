@@ -9,9 +9,9 @@ import com.example.photogallery.repository.GalleryPhotoRepository;
 import com.example.photogallery.repository.GalleryRepository;
 import com.example.photogallery.repository.PhotoRepository;
 import com.example.photogallery.service.DownloadService;
-import com.example.photogallery.service.PhotoStorageService;
 import com.example.photogallery.service.PhotoVariant;
 import com.example.photogallery.service.ShareTokenService;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.HashMap;
@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -41,7 +40,6 @@ public class ShareController {
     private final GalleryRepository galleryRepository;
     private final GalleryPhotoRepository galleryPhotoRepository;
     private final PhotoRepository photoRepository;
-    private final PhotoStorageService photoStorageService;
     private final DownloadService downloadService;
 
     public ShareController(
@@ -49,14 +47,12 @@ public class ShareController {
         GalleryRepository galleryRepository,
         GalleryPhotoRepository galleryPhotoRepository,
         PhotoRepository photoRepository,
-        PhotoStorageService photoStorageService,
         DownloadService downloadService
     ) {
         this.shareTokenService = shareTokenService;
         this.galleryRepository = galleryRepository;
         this.galleryPhotoRepository = galleryPhotoRepository;
         this.photoRepository = photoRepository;
-        this.photoStorageService = photoStorageService;
         this.downloadService = downloadService;
     }
 
@@ -121,7 +117,7 @@ public class ShareController {
     }
 
     @GetMapping("/share/{tokenId}/photo/{photoId}")
-    public ResponseEntity<FileSystemResource> viewSharedPhoto(
+    public ResponseEntity<StreamingResponseBody> viewSharedPhoto(
         @PathVariable("tokenId") UUID tokenId,
         @PathVariable("photoId") Long photoId
     ) {
@@ -146,32 +142,33 @@ public class ShareController {
                 return ResponseEntity.notFound().build();
             }
 
-            var path = photoStorageService.getFilePath(photo.getFileName());
-            FileSystemResource resource = new FileSystemResource(path);
-            if (!resource.exists()) {
+            DownloadService.ResolvedDownload resolved;
+            try {
+                resolved = downloadService.openForDownload(tenant, photo, null);
+            } catch (FileNotFoundException e) {
                 return ResponseEntity.notFound().build();
             }
 
-            MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-            if (photo.getContentType() != null) {
-                try {
-                    mediaType = MediaType.parseMediaType(photo.getContentType());
-                } catch (IllegalArgumentException ignored) {}
-            }
+            MediaType mediaType = resolved.mediaType();
+            StreamingResponseBody body = out -> {
+                try (var in = resolved.stream()) {
+                    in.transferTo(out);
+                }
+            };
 
             return ResponseEntity
                 .ok()
                 .contentType(mediaType)
                 .cacheControl(CacheControl.noCache())
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
-                .body(resource);
+                .body(body);
         } catch (NoSuchElementException | IOException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
     @GetMapping("/share/{tokenId}/photo/{photoId}/download")
-    public ResponseEntity<FileSystemResource> downloadSharedPhoto(
+    public ResponseEntity<StreamingResponseBody> downloadSharedPhoto(
         @PathVariable("tokenId") UUID tokenId,
         @PathVariable("photoId") Long photoId,
         @RequestParam(value = "variant", required = false) String variant
@@ -194,11 +191,17 @@ public class ShareController {
             .orElseThrow(() -> new NoSuchElementException("Photo not found"));
 
         PhotoVariant v = PhotoVariant.fromString(variant);
-        var resolved = downloadService.resolveForDownload(tenant, photo, v);
-        FileSystemResource resource = new FileSystemResource(resolved.path());
-        if (!resource.exists()) {
+        DownloadService.ResolvedDownload resolved;
+        try {
+            resolved = downloadService.openForDownload(tenant, photo, v);
+        } catch (FileNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
+        StreamingResponseBody body = out -> {
+            try (var in = resolved.stream()) {
+                in.transferTo(out);
+            }
+        };
 
         return ResponseEntity
             .ok()
@@ -208,7 +211,7 @@ public class ShareController {
                 HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"" + resolved.fileName() + "\""
             )
-            .body(resource);
+            .body(body);
     }
 
     @GetMapping("/share/{tokenId}/download.zip")

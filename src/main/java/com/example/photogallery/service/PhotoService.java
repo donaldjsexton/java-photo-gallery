@@ -7,7 +7,10 @@ import com.example.photogallery.repository.GalleryRepository;
 import com.example.photogallery.repository.PhotoRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
-import java.nio.file.*;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
@@ -42,7 +45,7 @@ public class PhotoService {
     @Autowired
     private GalleryRepository galleryRepository;
 
-    @Value("${photo.gallery.upload.dir}")
+    @Value("${photo.gallery.upload.dir:uploads}")
     private String uploadDir;
 
     private static final String TENANT_SLUG_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
@@ -92,6 +95,9 @@ public class PhotoService {
     // ---------------------------------------------------------
     @PostConstruct
     public void initializeExistingImages() {
+        if (!(photoStorageService instanceof LocalPhotoStorageService)) {
+            return;
+        }
         try {
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
@@ -171,8 +177,10 @@ public class PhotoService {
                 continue;
             }
 
-            Path filePath = photoStorageService.getFilePath(storedKey);
-            byte[] fileBytes = Files.readAllBytes(filePath);
+            byte[] fileBytes;
+            try (InputStream in = photoStorageService.openStream(storedKey)) {
+                fileBytes = in.readAllBytes();
+            }
             String fileHash = calculateFileHash(fileBytes);
 
             if (photoRepository.findByTenantAndFileHash(tenant, fileHash).isPresent()) {
@@ -192,7 +200,7 @@ public class PhotoService {
                 leafName,
                 storedKey,
                 contentType,
-                Files.size(filePath),
+                photoStorageService.getFileSize(storedKey),
                 fileHash
             );
 
@@ -265,7 +273,11 @@ public class PhotoService {
                             UUID.randomUUID().toString() +
                             getCanonicalExtension(filename);
 
-                        photoStorageService.storeFile(fileBytes, newStoredKey);
+                        photoStorageService.storeFile(
+                            fileBytes,
+                            newStoredKey,
+                            contentType
+                        );
 
                         existing.setOriginalName(filename);
                         existing.setFileName(newStoredKey);
@@ -291,7 +303,7 @@ public class PhotoService {
             getCanonicalExtension(filename);
 
         try {
-            photoStorageService.storeFile(fileBytes, fileKey);
+            photoStorageService.storeFile(fileBytes, fileKey, contentType);
         } catch (Exception e) {
             throw new RuntimeException("Failed to store uploaded file", e);
         }
@@ -448,7 +460,7 @@ public class PhotoService {
                 "/" +
                 UUID.randomUUID().toString() +
                 getCanonicalExtension(filename);
-            photoStorageService.storeFile(fileBytes, newFileKey);
+            photoStorageService.storeFile(fileBytes, newFileKey, contentType);
 
             existingPhoto.setOriginalName(filename);
             existingPhoto.setFileName(newFileKey);

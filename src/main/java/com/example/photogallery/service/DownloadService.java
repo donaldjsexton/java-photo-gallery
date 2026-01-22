@@ -9,11 +9,11 @@ import com.example.photogallery.repository.GalleryRepository;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,13 +32,18 @@ import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
 public class DownloadService {
 
-    public record ResolvedFile(Path path, MediaType mediaType, String fileName) {}
+    public record ResolvedDownload(
+        @NonNull InputStream stream,
+        @NonNull MediaType mediaType,
+        @NonNull String fileName
+    ) {}
 
     private static final Set<String> INLINE_SAFE_TYPES = Set.of(
         MediaType.IMAGE_JPEG_VALUE,
@@ -68,7 +73,7 @@ public class DownloadService {
         this.webJpegQuality = Math.min(Math.max(webJpegQuality, 0.1f), 1.0f);
     }
 
-    public ResolvedFile resolveForDownload(
+    public ResolvedDownload openForDownload(
         Tenant tenant,
         Photo photo,
         PhotoVariant variant
@@ -79,16 +84,14 @@ public class DownloadService {
         PhotoVariant effective = variant != null ? variant : PhotoVariant.ORIGINAL;
 
         if (effective == PhotoVariant.WEB) {
-            Path webPath = ensureWebVariant(tenant, photo);
-            if (webPath != null && Files.exists(webPath)) {
-                String name = buildWebDownloadName(photo);
-                return new ResolvedFile(webPath, MediaType.IMAGE_JPEG, name);
+            ResolvedDownload webVariant = openWebVariant(photo);
+            if (webVariant != null) {
+                return webVariant;
             }
         }
 
-        Path originalPath = photoStorageService.getFilePath(photo.getFileName());
-        return new ResolvedFile(
-            originalPath,
+        return new ResolvedDownload(
+            photoStorageService.openStream(photo.getFileName()),
             resolveMediaType(photo),
             buildOriginalDownloadName(photo)
         );
@@ -124,15 +127,17 @@ public class DownloadService {
         try (ZipOutputStream zip = new ZipOutputStream(outputStream)) {
             int index = 1;
             for (Photo photo : photos) {
-                ResolvedFile file = resolveForDownload(tenant, photo, variant);
-                if (file == null || file.path() == null || !Files.exists(file.path())) {
+                ResolvedDownload file;
+                try {
+                    file = openForDownload(tenant, photo, variant);
+                } catch (java.io.FileNotFoundException e) {
                     continue;
                 }
 
                 String entryName = zipEntryName(index++, file.fileName());
                 ZipEntry entry = new ZipEntry(entryName);
                 zip.putNextEntry(entry);
-                try (InputStream in = Files.newInputStream(file.path())) {
+                try (InputStream in = file.stream()) {
                     in.transferTo(zip);
                 }
                 zip.closeEntry();
@@ -174,33 +179,9 @@ public class DownloadService {
         return distinct.values().stream().toList();
     }
 
-    private Path ensureWebVariant(Tenant tenant, Photo photo) throws IOException {
-        Path originalPath = photoStorageService.getFilePath(photo.getFileName());
-        if (!Files.exists(originalPath)) {
-            throw new IOException("Original file missing");
-        }
-
-        String tenantSlug = tenant.getSlug() != null
-            ? tenant.getSlug().trim()
-            : "default";
-
-        boolean isTenantSegmented = photo.getFileName() != null && photo.getFileName().contains("/");
-        Path webDir = isTenantSegmented
-            ? originalPath.getParent().resolve("_derivatives").resolve("web")
-            : originalPath
-                .getParent()
-                .resolve("_derivatives")
-                .resolve(tenantSlug)
-                .resolve("web");
-
-        Files.createDirectories(webDir);
-        Path target = webDir.resolve(photo.getId() + ".jpg").normalize();
-        if (Files.exists(target)) {
-            return target;
-        }
-
+    private ResolvedDownload openWebVariant(Photo photo) throws IOException {
         BufferedImage source;
-        try (InputStream in = Files.newInputStream(originalPath)) {
+        try (InputStream in = photoStorageService.openStream(photo.getFileName())) {
             source = ImageIO.read(in);
         }
         if (source == null) {
@@ -209,8 +190,12 @@ public class DownloadService {
         }
 
         BufferedImage scaled = scaleDown(source, webMaxDimension);
-        writeJpeg(target, scaled, webJpegQuality);
-        return target;
+        byte[] bytes = renderJpeg(scaled, webJpegQuality);
+        return new ResolvedDownload(
+            new ByteArrayInputStream(bytes),
+            MediaType.IMAGE_JPEG,
+            buildWebDownloadName(photo)
+        );
     }
 
     private static BufferedImage scaleDown(BufferedImage input, int maxDim) {
@@ -255,7 +240,7 @@ public class DownloadService {
         return output;
     }
 
-    private static void writeJpeg(Path target, BufferedImage image, float quality)
+    private static byte[] renderJpeg(BufferedImage image, float quality)
         throws IOException {
         ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
         ImageWriteParam param = writer.getDefaultWriteParam();
@@ -264,13 +249,14 @@ public class DownloadService {
             param.setCompressionQuality(quality);
         }
 
-        Files.deleteIfExists(target);
-        try (ImageOutputStream out = ImageIO.createImageOutputStream(Files.newOutputStream(target))) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ImageOutputStream out = ImageIO.createImageOutputStream(bytes)) {
             writer.setOutput(out);
             writer.write(null, new IIOImage(image, null, null), param);
         } finally {
             writer.dispose();
         }
+        return bytes.toByteArray();
     }
 
     private static String zipEntryName(int index, String fileName) {

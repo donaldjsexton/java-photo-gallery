@@ -9,6 +9,9 @@ import com.example.photogallery.service.GalleryService;
 import com.example.photogallery.service.PhotoService;
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,10 +21,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class GalleryController {
+
+    private static final Logger log = LoggerFactory.getLogger(
+        GalleryController.class
+    );
 
     private final GalleryService galleryService;
     private final GalleryPhotoService galleryPhotoService;
@@ -49,7 +57,11 @@ public class GalleryController {
         @RequestParam(name = "sort", defaultValue = "uploadDate") String sort,
         Model model
     ) {
+        log.info("VIEW gallery id={}", galleryId);
         Gallery currentGallery = galleryService.getGallery(galleryId);
+        if (currentGallery == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
         if (currentGallery.getSlug() != null && !currentGallery.getSlug().isBlank()) {
             return "redirect:/" + currentGallery.getSlug() + "?sort=" + sort;
         }
@@ -81,8 +93,15 @@ public class GalleryController {
         @RequestParam(name = "sort", defaultValue = "uploadDate") String sort,
         Model model
     ) {
-        Gallery currentGallery = galleryService.getGalleryBySlugOrPublicId(identifier);
-        List<Photo> photos = galleryPhotoService.getPhotosInGallery(currentGallery.getId());
+        log.info("VIEW gallery identifier={}", identifier);
+        Gallery currentGallery =
+            galleryService.getGalleryBySlugOrPublicId(identifier);
+        if (currentGallery == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        List<Photo> photos = galleryPhotoService.getPhotosInGallery(
+            currentGallery.getId()
+        );
         List<Gallery> galleries = galleryService.getRootGalleries();
         model.addAttribute("categories", categoryService.listForCurrentTenant());
         model.addAttribute("albums", albumService.listForCurrentTenant());
@@ -147,11 +166,29 @@ public class GalleryController {
                         );
                     } catch (RuntimeException linkEx) {
                         errorCount++;
+                        log.error(
+                            "Failed to link uploaded photo galleryId={} photoId={}",
+                            galleryId,
+                            saved.getId(),
+                            linkEx
+                        );
                     }
                 } catch (IllegalArgumentException ex) {
                     skippedCount++;
+                    log.error(
+                        "Skipping upload galleryId={} filename={}",
+                        galleryId,
+                        file.getOriginalFilename(),
+                        ex
+                    );
                 } catch (RuntimeException ex) {
                     errorCount++;
+                    log.error(
+                        "Failed to upload photo galleryId={} filename={}",
+                        galleryId,
+                        file.getOriginalFilename(),
+                        ex
+                    );
                 }
             }
         }
@@ -174,6 +211,9 @@ public class GalleryController {
 
         redirectAttributes.addFlashAttribute("message", msg.toString().trim());
         Gallery gallery = galleryService.getGallery(galleryId);
+        if (gallery == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
         String target = redirectTo != null
             ? safeRedirect(redirectTo).replace("{galleryId}", galleryId.toString())
             : null;
@@ -197,6 +237,7 @@ public class GalleryController {
             photoService.deletePhoto(id);
             redirectAttributes.addFlashAttribute("message", "Photo deleted.");
         } catch (RuntimeException ex) {
+            log.error("Failed to delete photo id={}", id, ex);
             redirectAttributes.addFlashAttribute(
                 "message",
                 "Failed to delete photo."
@@ -226,9 +267,10 @@ public class GalleryController {
                 return "redirect:" + target;
             }
         } catch (RuntimeException ex) {
+            log.error("Failed to create category name={}", name, ex);
             redirectAttributes.addFlashAttribute(
                 "message",
-                "Failed to create category: " + ex.getMessage()
+                "Failed to create category."
             );
         }
         return "redirect:/";
@@ -246,6 +288,9 @@ public class GalleryController {
             var category = categoryId != null
                 ? categoryService.getById(categoryId)
                 : categoryService.getOrCreateDefaultCategory();
+            if (category == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+            }
             var created = albumService.create(category, name, description);
             redirectAttributes.addFlashAttribute("message", "Album created.");
             if (redirectTo != null) {
@@ -256,9 +301,10 @@ public class GalleryController {
                 return "redirect:" + target;
             }
         } catch (RuntimeException ex) {
+            log.error("Failed to create album name={} categoryId={}", name, categoryId, ex);
             redirectAttributes.addFlashAttribute(
                 "message",
-                "Failed to create album: " + ex.getMessage()
+                "Failed to create album."
             );
         }
         return "redirect:/";
@@ -310,9 +356,16 @@ public class GalleryController {
                 ? ("redirect:/" + created.getSlug())
                 : ("redirect:/gallery/" + created.getId());
         } catch (RuntimeException ex) {
+            log.error(
+                "Failed to create gallery title={} albumId={} parentId={}",
+                title,
+                albumId,
+                parentId,
+                ex
+            );
             redirectAttributes.addFlashAttribute(
                 "message",
-                "Failed to create gallery: " + ex.getMessage()
+                "Failed to create gallery."
             );
             return "redirect:/";
         }
@@ -333,6 +386,9 @@ public class GalleryController {
                 "Gallery title is required."
             );
             Gallery g = galleryService.getGallery(id);
+            if (g == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+            }
             return g.getSlug() != null
                 ? ("redirect:/" + g.getSlug())
                 : ("redirect:/gallery/" + id);
@@ -347,9 +403,10 @@ public class GalleryController {
             );
             redirectAttributes.addFlashAttribute("message", "Gallery updated.");
         } catch (RuntimeException ex) {
+            log.error("Failed to update gallery id={}", id, ex);
             redirectAttributes.addFlashAttribute(
                 "message",
-                "Failed to update gallery: " + ex.getMessage()
+                "Failed to update gallery."
             );
         }
 
@@ -357,6 +414,9 @@ public class GalleryController {
             ? safeRedirect(redirectTo).replace("{galleryId}", id.toString())
             : null;
         Gallery g = galleryService.getGallery(id);
+        if (g == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
         if (target != null && target.contains("{gallerySlug}")) {
             target = target.replace("{gallerySlug}", g.getSlug());
         }
@@ -376,11 +436,15 @@ public class GalleryController {
             galleryService.deleteGallery(id);
             redirectAttributes.addFlashAttribute("message", "Gallery deleted.");
         } catch (RuntimeException ex) {
+            log.error("Failed to delete gallery id={}", id, ex);
             redirectAttributes.addFlashAttribute(
                 "message",
-                "Failed to delete gallery: " + ex.getMessage()
+                "Failed to delete gallery."
             );
             Gallery g = galleryService.getGallery(id);
+            if (g == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+            }
             return g.getSlug() != null
                 ? ("redirect:/" + g.getSlug())
                 : ("redirect:/gallery/" + id);

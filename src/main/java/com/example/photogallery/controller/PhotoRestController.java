@@ -1,6 +1,7 @@
 package com.example.photogallery.controller;
 
 import com.example.photogallery.model.Photo;
+import com.example.photogallery.service.GalleryPhotoService;
 import com.example.photogallery.service.PhotoSearchService;
 import com.example.photogallery.service.PhotoService;
 import java.time.LocalDate;
@@ -34,13 +35,16 @@ public class PhotoRestController {
 
     private final PhotoService photoService;
     private final PhotoSearchService photoSearchService;
+    private final GalleryPhotoService galleryPhotoService;
 
     public PhotoRestController(
         PhotoService photoService,
-        PhotoSearchService photoSearchService
+        PhotoSearchService photoSearchService,
+        GalleryPhotoService galleryPhotoService
     ) {
         this.photoService = photoService;
         this.photoSearchService = photoSearchService;
+        this.galleryPhotoService = galleryPhotoService;
     }
 
     // onDuplicate = cancel | skip | overwrite
@@ -59,6 +63,9 @@ public class PhotoRestController {
         Photo saved = galleryId != null
             ? photoService.savePhotoForGallery(file, galleryId, handling)
             : photoService.savePhoto(file, handling);
+        if (galleryId != null && saved != null) {
+            galleryPhotoService.addPhotoToGallery(galleryId, saved.getId());
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 

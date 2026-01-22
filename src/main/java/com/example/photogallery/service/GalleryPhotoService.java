@@ -119,7 +119,7 @@ public class GalleryPhotoService {
     @Transactional
     public List<Photo> getPhotosInGallery(Long galleryId) {
         return galleryPhotoRepository
-            .findByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc(
+            .findByGalleryIdAndTenantWithPhotoOrderBySortOrderAscAddedAtAsc(
                 galleryId,
                 tenantService.getCurrentTenant()
             )

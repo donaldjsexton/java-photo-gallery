@@ -11,6 +11,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,10 +22,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class AlbumController {
+
+    private static final Logger log = LoggerFactory.getLogger(
+        AlbumController.class
+    );
 
     private final AlbumService albumService;
     private final GalleryService galleryService;
@@ -46,7 +54,11 @@ public class AlbumController {
 
     @GetMapping("/albums/{id}")
     public String viewAlbum(@PathVariable("id") Long albumId, Model model) {
+        log.info("VIEW album id={}", albumId);
         Album album = albumService.getById(albumId);
+        if (album == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
         List<Gallery> galleries = galleryService.getRootGalleriesForAlbum(album);
 
         Map<Long, Long> galleryThumbnails = new HashMap<>();
@@ -58,7 +70,13 @@ public class AlbumController {
                 if (photo != null) {
                     galleryThumbnails.put(g.getId(), photo.getId());
                 }
-            } catch (RuntimeException ignored) {}
+            } catch (RuntimeException ex) {
+                log.error(
+                    "Failed to resolve thumbnail for galleryId={}",
+                    g.getId(),
+                    ex
+                );
+            }
         }
 
         model.addAttribute("categories", categoryService.listForCurrentTenant());
@@ -89,9 +107,10 @@ public class AlbumController {
             );
             redirectAttributes.addFlashAttribute("message", "Album updated.");
         } catch (RuntimeException ex) {
+            log.error("Failed to update album id={}", albumId, ex);
             redirectAttributes.addFlashAttribute(
                 "message",
-                "Failed to update album: " + ex.getMessage()
+                "Failed to update album."
             );
         }
 
@@ -111,9 +130,10 @@ public class AlbumController {
             shareTokenService.createForAlbum(albumId);
             redirectAttributes.addFlashAttribute("message", "Share link created.");
         } catch (RuntimeException ex) {
+            log.error("Failed to create album share link albumId={}", albumId, ex);
             redirectAttributes.addFlashAttribute(
                 "message",
-                "Failed to create share link: " + ex.getMessage()
+                "Failed to create share link."
             );
         }
 
@@ -134,9 +154,15 @@ public class AlbumController {
             shareTokenService.revoke(albumId, tokenId);
             redirectAttributes.addFlashAttribute("message", "Share link revoked.");
         } catch (RuntimeException ex) {
+            log.error(
+                "Failed to revoke album share link albumId={} tokenId={}",
+                albumId,
+                tokenId,
+                ex
+            );
             redirectAttributes.addFlashAttribute(
                 "message",
-                "Failed to revoke share link: " + ex.getMessage()
+                "Failed to revoke share link."
             );
         }
 
@@ -156,9 +182,10 @@ public class AlbumController {
             albumService.deleteAlbum(albumId);
             redirectAttributes.addFlashAttribute("message", "Album deleted.");
         } catch (RuntimeException ex) {
+            log.error("Failed to delete album id={}", albumId, ex);
             redirectAttributes.addFlashAttribute(
                 "message",
-                "Failed to delete album: " + ex.getMessage()
+                "Failed to delete album."
             );
             return "redirect:/albums/" + albumId;
         }

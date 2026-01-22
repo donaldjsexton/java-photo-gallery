@@ -10,6 +10,7 @@ import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -23,9 +24,9 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        FilterChain filterChain
+        @NonNull HttpServletRequest request,
+        @NonNull HttpServletResponse response,
+        @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         try {
             if ("subdomain".equalsIgnoreCase(tenantMode)) {
@@ -64,4 +65,3 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
         return slug != null && slug.matches("^[a-z0-9][a-z0-9-]{0,63}$");
     }
 }
-
