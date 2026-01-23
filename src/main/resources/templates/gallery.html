@@ -386,7 +386,7 @@
                                             Upload photos
                                         </button>
                                         <a
-                                            class="ghost-btn"
+                                            class="pill ghost"
                                             th:if="${currentGallery != null}"
                                             th:href="${currentGallery.slug != null ? '/' + currentGallery.slug : '/gallery/' + currentGallery.id}"
                                         >
@@ -401,76 +401,122 @@
             </section>
 
             <section class="gallery-page" th:if="${!flowMode}">
-                <article class="card">
-                    <div class="card-head align-end">
-                        <div class="stack">
-                            <p class="eyebrow">Gallery</p>
-                            <h2
-                                th:text="${currentGallery != null ? currentGallery.title : 'Select a gallery from your dashboard'}"
-                            ></h2>
-                            <div
-                                class="muted small"
-                                th:if="${currentGallery != null}"
-                                th:text="${currentAlbum != null ? currentAlbum.name : 'No album'}"
-                            ></div>
-                        </div>
-
-                        <div class="stack" style="align-items: flex-end;">
-                            <div class="sorter" th:if="${currentGallery != null}">
-                                <label class="muted small">Sort</label>
-                                <select
-                                    onchange="
-                                        const baseUrl =
-                                            /*[[${currentGallery != null and currentGallery.slug != null ? '/' + currentGallery.slug + '?sort=' : '/gallery/' + currentGallery.id + '?sort='}]]*/ '';
-                                        if (baseUrl) {
-                                            window.location.href =
-                                                baseUrl + this.value;
-                                        }
-                                    "
-                                >
-                                    <option
-                                        value="uploadDate"
-                                        th:selected="${currentSort == 'uploadDate'}"
-                                    >
-                                        Latest uploaded
-                                    </option>
-                                    <option
-                                        value="dateTaken"
-                                        th:selected="${currentSort == 'dateTaken'}"
-                                    >
-                                        Date taken (newest)
-                                    </option>
-                                    <option
-                                        value="dateTakenAsc"
-                                        th:selected="${currentSort == 'dateTakenAsc'}"
-                                    >
-                                        Date taken (oldest)
-                                    </option>
-                                    <option
-                                        value="camera"
-                                        th:selected="${currentSort == 'camera'}"
-                                    >
-                                        Camera model
-                                    </option>
-                                    <option
-                                        value="withCamera"
-                                        th:selected="${currentSort == 'withCamera'}"
-                                    >
-                                        Has camera info
-                                    </option>
-                                    <option
-                                        value="withDateTaken"
-                                        th:selected="${currentSort == 'withDateTaken'}"
-                                    >
-                                        Has date taken
-                                    </option>
-                                </select>
+                <div class="workbench no-onboarding">
+                    <section class="column">
+                        <article class="card">
+                            <div class="stack">
+                                <p class="eyebrow">Gallery</p>
+                                <h2
+                                    th:text="${currentGallery != null ? currentGallery.title : 'Select a gallery from your dashboard'}"
+                                ></h2>
+                                <div
+                                    class="muted small"
+                                    th:if="${currentGallery != null}"
+                                    th:text="${currentAlbum != null ? currentAlbum.name : 'No album'}"
+                                ></div>
                             </div>
-                        </div>
-                    </div>
-                </article>
 
-                <div class="masonry" id="masonryGrid" th:if="${currentGallery != null}">
+                        </article>
+
+                        <article class="card" th:if="${currentGallery != null}">
+                            <p class="eyebrow">Manage</p>
+                            <h3>Gallery</h3>
+                            <div class="stack">
+                                <button
+                                    type="button"
+                                    class="chip clickable"
+                                    onclick="document.getElementById('gallery-upload').showModal()"
+                                >
+                                    Upload photos
+                                </button>
+                                <a
+                                    class="chip clickable"
+                                    th:href="@{/galleries/{id}/download.zip(id=${currentGallery.id})}"
+                                >
+                                    Download ZIP (original)
+                                </a>
+                                <a
+                                    class="chip clickable"
+                                    th:href="@{/galleries/{id}/download.zip(id=${currentGallery.id}, variant='web')}"
+                                >
+                                    Download ZIP (web)
+                                </a>
+                            </div>
+                        </article>
+
+                        <dialog
+                            class="auth-modal"
+                            id="gallery-upload"
+                            aria-label="Upload photos"
+                            th:if="${currentGallery != null}"
+                        >
+                            <div class="card auth-modal-surface">
+                                <div class="auth-modal-head">
+                                    <div>
+                                        <p class="eyebrow">Manage</p>
+                                        <h2>Upload photos</h2>
+                                    </div>
+                                    <form method="dialog">
+                                        <button type="submit" class="btn secondary">
+                                            Close
+                                        </button>
+                                    </form>
+                                </div>
+                                <form
+                                    class="form stacked"
+                                    id="bulkUploadForm"
+                                    th:action="@{/upload}"
+                                    method="post"
+                                    enctype="multipart/form-data"
+                                >
+                                    <input
+                                        type="hidden"
+                                        th:name="${_csrf.parameterName}"
+                                        th:value="${_csrf.token}"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="galleryId"
+                                        th:value="${currentGallery != null ? currentGallery.id : ''}"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="redirectTo"
+                                        th:value="${currentGallery != null ? (currentGallery.slug != null ? '/' + currentGallery.slug : '/gallery/' + currentGallery.id) : '/'}"
+                                    />
+                                    <label>
+                                        <span>Photos</span>
+                                        <input
+                                            type="file"
+                                            name="files"
+                                            id="fileInput"
+                                            multiple
+                                            required
+                                        />
+                                    </label>
+                                    <label>
+                                        <span>On duplicates</span>
+                                        <select name="duplicateMode" id="duplicateMode">
+                                            <option value="cancel" selected>
+                                                Stop (default)
+                                            </option>
+                                            <option value="skip">Skip</option>
+                                            <option value="overwrite">Overwrite</option>
+                                        </select>
+                                    </label>
+                                    <div class="muted small" id="uploadStatus"></div>
+                                    <div class="actions">
+                                        <button type="submit">
+                                            Upload photos
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </dialog>
+                    </section>
+
+                    <section class="column main">
+                        <div class="masonry" id="masonryGrid" th:if="${currentGallery != null}">
                     <div
                         class="tile"
                         th:each="photo : ${photos}"
@@ -478,10 +524,22 @@
                     >
                         <div class="thumb">
                             <img
-                                th:src="@{/photos/{id}/image(id=${photo.id})}"
+                                th:src="@{/photos/{id}/image(id=${photo.id}, variant='web')}"
                                 th:alt="${photo.originalName}"
+                                th:attr="data-original=@{/photos/{id}/image(id=${photo.id})}"
+                                onload="this.classList.add('loaded')"
                                 onerror="
-                                    this.src = '/images/placeholder.jpg'
+                                    if (!this.dataset.fallback) {
+                                        this.dataset.fallback = '1';
+                                        this.src = this.dataset.original;
+                                    } else {
+                                        this.src = '/img/logo.png';
+                                    }
+                                    this.classList.add('loaded');
+                                    if (this.closest) {
+                                        const thumb = this.closest('.thumb');
+                                        if (thumb) thumb.classList.add('loaded');
+                                    }
                                 "
                             />
                             <div class="overlay">
@@ -544,28 +602,26 @@
                                 </form>
                             </div>
                         </div>
-                        <div class="tile-meta">
-                            <div
-                                class="strong small"
-                                th:text="${photo.originalName}"
-                            ></div>
-                        </div>
                     </div>
                 </div>
 
-                <div
-                    class="muted text-center"
-                    th:if="${currentGallery != null and (photos == null or photos.size() == 0)}"
-                >
-                    No photos here yet. Upload some when you’re ready.
-                </div>
+                        </div>
 
-                <article
-                    class="card text-center muted"
-                    th:if="${currentGallery == null}"
-                >
-                    Head back to your dashboard to choose a gallery.
-                </article>
+                        <div
+                            class="muted text-center"
+                            th:if="${currentGallery != null and (photos == null or photos.size() == 0)}"
+                        >
+                            No photos here yet. Upload some when you’re ready.
+                        </div>
+
+                        <article
+                            class="card text-center muted"
+                            th:if="${currentGallery == null}"
+                        >
+                            Head back to your dashboard to choose a gallery.
+                        </article>
+                    </section>
+                </div>
             </section>
             </main>
         </div>
@@ -582,6 +638,23 @@
                 <img class="lightbox-img" id="lightboxImg" alt="" />
             </div>
         </div>
+
+        <script>
+            (function () {
+                const imgs = document.querySelectorAll('.thumb img');
+                imgs.forEach((img) => {
+                    const markLoaded = () => {
+                        img.classList.add('loaded');
+                        const thumb = img.closest('.thumb');
+                        if (thumb) thumb.classList.add('loaded');
+                    };
+                    img.addEventListener('load', markLoaded, { once: true });
+                    if (img.complete && img.naturalWidth > 0) {
+                        markLoaded();
+                    }
+                });
+            })();
+        </script>
 
         <script>
             (function () {

@@ -65,7 +65,10 @@ public class GalleryController {
         if (currentGallery.getSlug() != null && !currentGallery.getSlug().isBlank()) {
             return "redirect:/" + currentGallery.getSlug() + "?sort=" + sort;
         }
-        List<Photo> photos = galleryPhotoService.getPhotosInGallery(galleryId);
+        List<Photo> photos = galleryPhotoService.getPhotosInGallery(
+            galleryId,
+            sort
+        );
         List<Gallery> galleries = galleryService.getRootGalleries();
         model.addAttribute("categories", categoryService.listForCurrentTenant());
         model.addAttribute("albums", albumService.listForCurrentTenant());
@@ -100,7 +103,8 @@ public class GalleryController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
         List<Photo> photos = galleryPhotoService.getPhotosInGallery(
-            currentGallery.getId()
+            currentGallery.getId(),
+            sort
         );
         List<Gallery> galleries = galleryService.getRootGalleries();
         model.addAttribute("categories", categoryService.listForCurrentTenant());

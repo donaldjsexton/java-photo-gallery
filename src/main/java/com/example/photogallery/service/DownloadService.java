@@ -5,7 +5,6 @@ import com.example.photogallery.model.Gallery;
 import com.example.photogallery.model.Photo;
 import com.example.photogallery.model.Tenant;
 import com.example.photogallery.repository.GalleryPhotoRepository;
-import com.example.photogallery.repository.GalleryRepository;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -15,8 +14,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -53,7 +50,6 @@ public class DownloadService {
     );
 
     private final PhotoStorageService photoStorageService;
-    private final GalleryRepository galleryRepository;
     private final GalleryPhotoRepository galleryPhotoRepository;
 
     private final int webMaxDimension;
@@ -61,13 +57,11 @@ public class DownloadService {
 
     public DownloadService(
         PhotoStorageService photoStorageService,
-        GalleryRepository galleryRepository,
         GalleryPhotoRepository galleryPhotoRepository,
         @Value("${photo.gallery.download.web-max-dimension:2000}") int webMaxDimension,
         @Value("${photo.gallery.download.web-jpeg-quality:0.85}") float webJpegQuality
     ) {
         this.photoStorageService = photoStorageService;
-        this.galleryRepository = galleryRepository;
         this.galleryPhotoRepository = galleryPhotoRepository;
         this.webMaxDimension = Math.max(200, webMaxDimension);
         this.webJpegQuality = Math.min(Math.max(webJpegQuality, 0.1f), 1.0f);
@@ -84,9 +78,13 @@ public class DownloadService {
         PhotoVariant effective = variant != null ? variant : PhotoVariant.ORIGINAL;
 
         if (effective == PhotoVariant.WEB) {
-            ResolvedDownload webVariant = openWebVariant(photo);
-            if (webVariant != null) {
-                return webVariant;
+            try {
+                ResolvedDownload webVariant = openWebVariant(photo);
+                if (webVariant != null) {
+                    return webVariant;
+                }
+            } catch (IOException | RuntimeException ignored) {
+                // Fall back to the original if web rendering fails.
             }
         }
 
@@ -153,29 +151,70 @@ public class DownloadService {
         return sanitizeFileName(base) + "-" + date + suffix + ".zip";
     }
 
+    public void writeGalleryZip(
+        OutputStream outputStream,
+        Tenant tenant,
+        Gallery gallery,
+        PhotoVariant variant
+    ) throws IOException {
+        if (outputStream == null) {
+            throw new IOException("Output stream required");
+        }
+
+        List<Photo> photos = listDistinctPhotosInGallery(tenant, gallery);
+        try (ZipOutputStream zip = new ZipOutputStream(outputStream)) {
+            int index = 1;
+            for (Photo photo : photos) {
+                ResolvedDownload file;
+                try {
+                    file = openForDownload(tenant, photo, variant);
+                } catch (java.io.FileNotFoundException e) {
+                    continue;
+                }
+
+                String entryName = zipEntryName(index++, file.fileName());
+                ZipEntry entry = new ZipEntry(entryName);
+                zip.putNextEntry(entry);
+                try (InputStream in = file.stream()) {
+                    in.transferTo(zip);
+                }
+                zip.closeEntry();
+            }
+            zip.finish();
+        }
+    }
+
+    public String buildGalleryZipFileName(Gallery gallery, PhotoVariant variant) {
+        String base = gallery != null ? gallery.getTitle() : "gallery";
+        String date = java.time.LocalDate.now().format(DateTimeFormatter.ISO_DATE);
+        String suffix = variant == PhotoVariant.WEB ? "-web" : "-original";
+        return sanitizeFileName(base) + "-" + date + suffix + ".zip";
+    }
+
     private List<Photo> listDistinctPhotosInAlbum(Tenant tenant, Album album) {
         if (tenant == null || album == null) {
             return List.of();
         }
 
-        List<Gallery> galleries = new ArrayList<>(
-            galleryRepository.findByTenantAndAlbum(tenant, album)
-        );
-        galleries.sort(
-            Comparator
-                .comparing(Gallery::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(Gallery::getId, Comparator.nullsLast(Comparator.naturalOrder()))
-        );
+        Map<Long, Photo> distinct = new LinkedHashMap<>();
+        galleryPhotoRepository
+            .findPhotosByTenantAndAlbumOrdered(tenant, album)
+            .forEach(photo -> distinct.putIfAbsent(photo.getId(), photo));
+        return distinct.values().stream().toList();
+    }
+
+    private List<Photo> listDistinctPhotosInGallery(
+        Tenant tenant,
+        Gallery gallery
+    ) {
+        if (tenant == null || gallery == null) {
+            return List.of();
+        }
 
         Map<Long, Photo> distinct = new LinkedHashMap<>();
-        for (Gallery gallery : galleries) {
-            galleryPhotoRepository
-                .findByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc(
-                    gallery.getId(),
-                    tenant
-                )
-                .forEach(gp -> distinct.putIfAbsent(gp.getPhoto().getId(), gp.getPhoto()));
-        }
+        galleryPhotoRepository
+            .findPhotosByTenantAndGalleryOrdered(tenant, gallery)
+            .forEach(photo -> distinct.putIfAbsent(photo.getId(), photo));
         return distinct.values().stream().toList();
     }
 

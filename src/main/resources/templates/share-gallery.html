@@ -84,7 +84,21 @@
                                 <img
                                     th:src="@{/share/{tokenId}/photo/{photoId}(tokenId=${shareTokenId}, photoId=${photo.id})}"
                                     th:alt="${photo.originalName}"
-                                    onerror="this.style.display='none'"
+                                    onload="
+                                        this.classList.add('loaded');
+                                        if (this.closest) {
+                                            const thumb = this.closest('.thumb');
+                                            if (thumb) thumb.classList.add('loaded');
+                                        }
+                                    "
+                                    onerror="
+                                        this.style.display='none';
+                                        this.classList.add('loaded');
+                                        if (this.closest) {
+                                            const thumb = this.closest('.thumb');
+                                            if (thumb) thumb.classList.add('loaded');
+                                        }
+                                    "
                                 />
                             <div class="overlay">
                                     <div>
@@ -141,6 +155,23 @@
                 <img class="lightbox-img" id="lightboxImg" alt="" />
             </div>
         </div>
+
+        <script>
+            (function () {
+                const imgs = document.querySelectorAll('.thumb img');
+                imgs.forEach((img) => {
+                    const markLoaded = () => {
+                        img.classList.add('loaded');
+                        const thumb = img.closest('.thumb');
+                        if (thumb) thumb.classList.add('loaded');
+                    };
+                    img.addEventListener('load', markLoaded, { once: true });
+                    if (img.complete && img.naturalWidth > 0) {
+                        markLoaded();
+                    }
+                });
+            })();
+        </script>
 
         <script>
             (function () {

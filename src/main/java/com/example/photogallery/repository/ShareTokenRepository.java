@@ -15,6 +15,8 @@ public interface ShareTokenRepository extends JpaRepository<ShareToken, UUID> {
     @Query(
         """
         SELECT st FROM ShareToken st
+        JOIN FETCH st.tenant
+        JOIN FETCH st.album
         WHERE st.id = :id
           AND (st.expiresAt IS NULL OR st.expiresAt > :now)
         """

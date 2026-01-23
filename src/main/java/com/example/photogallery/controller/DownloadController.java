@@ -1,11 +1,13 @@
 package com.example.photogallery.controller;
 
 import com.example.photogallery.model.Album;
+import com.example.photogallery.model.Gallery;
 import com.example.photogallery.model.Photo;
 import com.example.photogallery.model.Tenant;
 import com.example.photogallery.repository.PhotoRepository;
 import com.example.photogallery.service.AlbumService;
 import com.example.photogallery.service.DownloadService;
+import com.example.photogallery.service.GalleryService;
 import com.example.photogallery.service.PhotoVariant;
 import com.example.photogallery.service.TenantService;
 import java.io.FileNotFoundException;
@@ -27,17 +29,20 @@ public class DownloadController {
 
     private final TenantService tenantService;
     private final AlbumService albumService;
+    private final GalleryService galleryService;
     private final PhotoRepository photoRepository;
     private final DownloadService downloadService;
 
     public DownloadController(
         TenantService tenantService,
         AlbumService albumService,
+        GalleryService galleryService,
         PhotoRepository photoRepository,
         DownloadService downloadService
     ) {
         this.tenantService = tenantService;
         this.albumService = albumService;
+        this.galleryService = galleryService;
         this.photoRepository = photoRepository;
         this.downloadService = downloadService;
     }
@@ -128,6 +133,35 @@ public class DownloadController {
         StreamingResponseBody body = out -> {
             try {
                 downloadService.writeAlbumZip(out, tenant, album, v);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        };
+
+        return ResponseEntity
+            .ok()
+            .contentType(MediaType.parseMediaType("application/zip"))
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + fileName + "\""
+            )
+            .cacheControl(CacheControl.noCache())
+            .body(body);
+    }
+
+    @GetMapping("/galleries/{galleryId}/download.zip")
+    public ResponseEntity<StreamingResponseBody> downloadGalleryZip(
+        @PathVariable("galleryId") Long galleryId,
+        @RequestParam(value = "variant", required = false) String variant
+    ) {
+        Gallery gallery = galleryService.getGallery(galleryId);
+        Tenant tenant = tenantService.getCurrentTenant();
+        PhotoVariant v = PhotoVariant.fromString(variant);
+
+        String fileName = downloadService.buildGalleryZipFileName(gallery, v);
+        StreamingResponseBody body = out -> {
+            try {
+                downloadService.writeGalleryZip(out, tenant, gallery, v);
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }

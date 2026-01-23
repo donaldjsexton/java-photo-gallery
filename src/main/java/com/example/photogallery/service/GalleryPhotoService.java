@@ -8,6 +8,7 @@ import com.example.photogallery.repository.GalleryPhotoRepository;
 import com.example.photogallery.repository.GalleryRepository;
 import com.example.photogallery.repository.PhotoRepository;
 import jakarta.transaction.Transactional;
+import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
@@ -118,7 +119,12 @@ public class GalleryPhotoService {
 
     @Transactional
     public List<Photo> getPhotosInGallery(Long galleryId) {
-        return galleryPhotoRepository
+        return getPhotosInGallery(galleryId, null);
+    }
+
+    @Transactional
+    public List<Photo> getPhotosInGallery(Long galleryId, String sortKey) {
+        List<Photo> photos = galleryPhotoRepository
             .findByGalleryIdAndTenantWithPhotoOrderBySortOrderAscAddedAtAsc(
                 galleryId,
                 tenantService.getCurrentTenant()
@@ -126,6 +132,9 @@ public class GalleryPhotoService {
             .stream()
             .map(GalleryPhoto::getPhoto)
             .collect(Collectors.toList());
+
+        String normalized = sortKey != null ? sortKey.trim() : "";
+        return sortPhotos(photos, normalized);
     }
 
     // ---- Reorder photos ----
@@ -153,5 +162,93 @@ public class GalleryPhotoService {
         }
 
         galleryPhotoRepository.saveAll(mappings);
+    }
+
+    private static List<Photo> sortPhotos(List<Photo> photos, String sortKey) {
+        if (photos == null || photos.isEmpty()) {
+            return photos;
+        }
+
+        List<Photo> working = photos;
+        Comparator<Photo> comparator = null;
+
+        switch (sortKey) {
+            case "dateTaken":
+                comparator =
+                    Comparator.comparing(
+                        Photo::getDateTaken,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                    ).thenComparing(
+                        Photo::getId,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                    );
+                break;
+            case "dateTakenAsc":
+                comparator =
+                    Comparator.comparing(
+                        Photo::getDateTaken,
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                    ).thenComparing(
+                        Photo::getId,
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                    );
+                break;
+            case "camera":
+                comparator =
+                    Comparator.comparing(
+                        (Photo photo) -> normalizeCamera(photo.getCamera()),
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+                    ).thenComparing(
+                        Photo::getId,
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                    );
+                break;
+            case "withCamera":
+                working =
+                    photos
+                        .stream()
+                        .filter(
+                            (Photo photo) ->
+                                normalizeCamera(photo.getCamera()) != null
+                        )
+                        .collect(Collectors.toList());
+                comparator = uploadDateDesc();
+                break;
+            case "withDateTaken":
+                working =
+                    photos
+                        .stream()
+                        .filter((Photo photo) -> photo.getDateTaken() != null)
+                        .collect(Collectors.toList());
+                comparator = uploadDateDesc();
+                break;
+            case "uploadDate":
+            default:
+                comparator = uploadDateDesc();
+                break;
+        }
+
+        if (comparator != null) {
+            working.sort(comparator);
+        }
+        return working;
+    }
+
+    private static Comparator<Photo> uploadDateDesc() {
+        return Comparator
+            .comparing(
+                Photo::getUploadDate,
+                Comparator.nullsLast(Comparator.reverseOrder())
+            )
+            .thenComparing(
+                Photo::getId,
+                Comparator.nullsLast(Comparator.reverseOrder())
+            );
+    }
+
+    private static String normalizeCamera(String raw) {
+        if (raw == null) return null;
+        String trimmed = raw.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

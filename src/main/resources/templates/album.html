@@ -88,7 +88,166 @@
                             </a>
                         </div>
 
+                        <dialog
+                            class="auth-modal"
+                            id="album-settings"
+                            aria-label="Edit album"
+                            th:if="${currentAlbum != null}"
+                        >
+                            <div class="card auth-modal-surface">
+                                <div class="auth-modal-head">
+                                    <div>
+                                        <p class="eyebrow">Manage</p>
+                                        <h2>Edit album</h2>
+                                    </div>
+                                    <form method="dialog">
+                                        <button type="submit" class="btn secondary">
+                                            Close
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <form
+                                    class="form stacked"
+                                    th:action="@{/albums/{id}(id=${currentAlbum.id})}"
+                                    method="post"
+                                >
+                                    <input
+                                        type="hidden"
+                                        th:name="${_csrf.parameterName}"
+                                        th:value="${_csrf.token}"
+                                    />
+                                    <input type="hidden" name="_method" value="PUT" />
+                                    <input
+                                        type="hidden"
+                                        name="redirectTo"
+                                        th:value="@{/albums/{id}(id=${currentAlbum.id})}"
+                                    />
+                                    <label>
+                                        <span>Album name</span>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            th:value="${currentAlbum.name}"
+                                            required
+                                        />
+                                    </label>
+                                    <label>
+                                        <span>Description</span>
+                                        <input
+                                            type="text"
+                                            name="description"
+                                            th:value="${currentAlbum.description}"
+                                            placeholder="Optional"
+                                        />
+                                    </label>
+                                    <label>
+                                        <span>Category</span>
+                                        <select name="categoryId">
+                                            <option value="">
+                                                Uncategorized
+                                            </option>
+                                            <option
+                                                th:each="c : ${categories}"
+                                                th:value="${c.id}"
+                                                th:text="${c.name}"
+                                                th:selected="${currentAlbum.category != null and currentAlbum.category.id == c.id}"
+                                            ></option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        <span>Visibility</span>
+                                        <select name="visibility">
+                                            <option
+                                                value="private"
+                                                th:selected="${currentAlbum.visibility != null and currentAlbum.visibility.name() == 'PRIVATE'}"
+                                            >
+                                                Private
+                                            </option>
+                                            <option
+                                                value="public"
+                                                th:selected="${currentAlbum.visibility != null and currentAlbum.visibility.name() == 'PUBLIC'}"
+                                            >
+                                                Public
+                                            </option>
+                                        </select>
+                                    </label>
+                                    <div class="actions">
+                                        <button type="submit">
+                                            Save changes
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <form
+                                    th:action="@{/albums/{id}(id=${currentAlbum.id})}"
+                                    method="post"
+                                    onsubmit="return confirm('Delete this album? Galleries and orphaned photos will be removed.');"
+                                >
+                                    <input
+                                        type="hidden"
+                                        th:name="${_csrf.parameterName}"
+                                        th:value="${_csrf.token}"
+                                    />
+                                    <input type="hidden" name="_method" value="DELETE" />
+                                    <input
+                                        type="hidden"
+                                        name="redirectTo"
+                                        value="/dashboard"
+                                    />
+                                    <button type="submit" class="btn danger">
+                                        Delete album
+                                    </button>
+                                </form>
+                            </div>
+                        </dialog>
+
                         <div th:if="${currentAlbum != null}">
+                            <hr class="divider" style="margin: 16px 0;" />
+
+                            <div class="card-head" style="margin: 0 0 10px;">
+                                <div>
+                                    <p class="eyebrow">Manage</p>
+                                    <h3>Album</h3>
+                                </div>
+                            </div>
+
+                            <ul class="mini-gallery-list">
+                                <li>
+                                    <div class="mini-gallery-row">
+                                        <span class="mini-gallery-link" th:text="${currentAlbum.name}">
+                                            Album
+                                        </span>
+                                        <div class="mini-gallery-actions">
+                                            <button
+                                                type="button"
+                                                class="icon-btn"
+                                                onclick="document.getElementById('album-settings').showModal()"
+                                                aria-label="Edit album"
+                                                title="Edit album"
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                    <path
+                                                        d="M4 20h4l10.5-10.5a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 16v4Z"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.8"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                    <path
+                                                        d="M13.5 6.5l4 4"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.8"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+
                             <hr class="divider" style="margin: 16px 0;" />
 
                             <div class="card-head align-end" style="margin: 0 0 10px;">
@@ -484,7 +643,21 @@
                                     th:if="${galleryThumbnails != null and galleryThumbnails[g.id] != null}"
                                     th:src="@{/photos/{id}/image(id=${galleryThumbnails[g.id]})}"
                                     th:alt="${g.title}"
-                                    onerror="this.style.display='none'"
+                                    onload="
+                                        this.classList.add('loaded');
+                                        if (this.closest) {
+                                            const thumb = this.closest('.thumb');
+                                            if (thumb) thumb.classList.add('loaded');
+                                        }
+                                    "
+                                    onerror="
+                                        this.style.display='none';
+                                        this.classList.add('loaded');
+                                        if (this.closest) {
+                                            const thumb = this.closest('.thumb');
+                                            if (thumb) thumb.classList.add('loaded');
+                                        }
+                                    "
                                 />
                                 <div
                                     th:if="${galleryThumbnails == null or galleryThumbnails[g.id] == null}"
@@ -512,8 +685,25 @@
 	            </main>
 	        </div>
 	
-	        <script>
-	            async function copyShareLink(button) {
+        <script>
+            (function () {
+                const imgs = document.querySelectorAll('.thumb img');
+                imgs.forEach((img) => {
+                    const markLoaded = () => {
+                        img.classList.add('loaded');
+                        const thumb = img.closest('.thumb');
+                        if (thumb) thumb.classList.add('loaded');
+                    };
+                    img.addEventListener('load', markLoaded, { once: true });
+                    if (img.complete && img.naturalWidth > 0) {
+                        markLoaded();
+                    }
+                });
+            })();
+        </script>
+
+        <script>
+            async function copyShareLink(button) {
 	                const path = button?.getAttribute("data-path");
 	                if (!path) return;
 	
@@ -533,12 +723,12 @@
 	        </script>
 
 	        <script>
-	            (function () {
-	                const form = document.getElementById('newGalleryForm');
-	                const fileInput = document.getElementById('newGalleryFileInput');
-	                const duplicateMode = document.getElementById(
-	                    'newGalleryDuplicateMode'
-	                );
+            (function () {
+                const form = document.getElementById('newGalleryForm');
+                const fileInput = document.getElementById('newGalleryFileInput');
+                const duplicateMode = document.getElementById(
+                    'newGalleryDuplicateMode'
+                );
 	                const statusEl = document.getElementById('newGalleryUploadStatus');
 	                const submitBtn = document.getElementById('newGallerySubmit');
 	                if (!form || !fileInput) return;

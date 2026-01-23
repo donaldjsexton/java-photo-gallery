@@ -214,7 +214,21 @@
                                     th:if="${albumThumbnails != null and albumThumbnails[a.id] != null}"
                                     th:src="@{/photos/{id}/image(id=${albumThumbnails[a.id]})}"
                                     th:alt="${a.name}"
-                                    onerror="this.style.display='none'"
+                                    onload="
+                                        this.classList.add('loaded');
+                                        if (this.closest) {
+                                            const thumb = this.closest('.thumb');
+                                            if (thumb) thumb.classList.add('loaded');
+                                        }
+                                    "
+                                    onerror="
+                                        this.style.display='none';
+                                        this.classList.add('loaded');
+                                        if (this.closest) {
+                                            const thumb = this.closest('.thumb');
+                                            if (thumb) thumb.classList.add('loaded');
+                                        }
+                                    "
                                 />
                                 <div
                                     th:if="${albumThumbnails == null or albumThumbnails[a.id] == null}"
@@ -293,5 +307,22 @@
                 </div>
             </main>
         </div>
+
+        <script>
+            (function () {
+                const imgs = document.querySelectorAll('.thumb img');
+                imgs.forEach((img) => {
+                    const markLoaded = () => {
+                        img.classList.add('loaded');
+                        const thumb = img.closest('.thumb');
+                        if (thumb) thumb.classList.add('loaded');
+                    };
+                    img.addEventListener('load', markLoaded, { once: true });
+                    if (img.complete && img.naturalWidth > 0) {
+                        markLoaded();
+                    }
+                });
+            })();
+        </script>
     </body>
 </html>

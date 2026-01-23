@@ -101,7 +101,7 @@ public class ShareController {
 
         Gallery gallery = resolveGalleryInAlbum(tenant, album, identifier);
         List<Photo> photos = galleryPhotoRepository
-            .findByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc(
+            .findByGalleryIdAndTenantWithPhotoOrderBySortOrderAscAddedAtAsc(
                 gallery.getId(),
                 tenant
             )
