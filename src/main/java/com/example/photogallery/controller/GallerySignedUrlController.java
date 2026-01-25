@@ -55,9 +55,11 @@ public class GallerySignedUrlController {
             }
             for (AssetVariant variant : AssetVariant.values()) {
                 Duration ttl = ttlForVariant(variant);
+                boolean useCdn = variant != AssetVariant.DOWNLOAD;
                 String signedUrl = signedUrlService.signGetObjectUrl(
                     objectKey,
-                    ttl
+                    ttl,
+                    useCdn
                 );
                 assets.add(
                     new GalleryAsset(

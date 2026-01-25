@@ -445,6 +445,29 @@ button.icon-btn.danger:hover {
     border-color: var(--accent-stroke);
     color: var(--accent-ink);
 }
+button.chip {
+    background: rgba(15, 23, 42, 0.03);
+    border: 1px solid var(--stroke);
+    color: var(--ink);
+    box-shadow: none;
+}
+button.chip.ghost {
+    background: transparent;
+    color: var(--muted);
+}
+button.chip.accent {
+    background: var(--accent-soft);
+    border-color: var(--accent-stroke);
+    color: var(--accent-ink);
+}
+button.chip:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent-stroke);
+    box-shadow: none;
+}
+button.chip:active {
+    transform: translateY(0);
+}
 .chip-cloud {
     display: flex;
     flex-wrap: wrap;

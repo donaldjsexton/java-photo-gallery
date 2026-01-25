@@ -80,12 +80,29 @@
                                 th:with="ident=${g.slug != null and !g.slug.isBlank() ? g.slug : g.publicId}"
                                 th:href="@{/share/{tokenId}/g/{identifier}(tokenId=${shareTokenId}, identifier=${ident})}"
                             >
-                                <div class="thumb">
+                                <div
+                                    class="thumb"
+                                    th:classappend="${galleryThumbnails == null or galleryThumbnails[g.id] == null} ? ' loaded' : ''"
+                                >
                                     <img
                                         th:if="${galleryThumbnails != null and galleryThumbnails[g.id] != null}"
                                         th:src="@{/share/{tokenId}/photo/{photoId}(tokenId=${shareTokenId}, photoId=${galleryThumbnails[g.id]})}"
                                         th:alt="${g.title}"
-                                        onerror="this.style.display='none'"
+                                        onload="
+                                            this.classList.add('loaded');
+                                            if (this.closest) {
+                                                const thumb = this.closest('.thumb');
+                                                if (thumb) thumb.classList.add('loaded');
+                                            }
+                                        "
+                                        onerror="
+                                            this.style.display='none';
+                                            this.classList.add('loaded');
+                                            if (this.closest) {
+                                                const thumb = this.closest('.thumb');
+                                                if (thumb) thumb.classList.add('loaded');
+                                            }
+                                        "
                                     />
                                     <div
                                         th:if="${galleryThumbnails == null or galleryThumbnails[g.id] == null}"
@@ -116,5 +133,36 @@
                 </div>
             </main>
         </div>
+        <script>
+            (function () {
+                const imgs = document.querySelectorAll('.thumb img');
+                const markLoaded = (img) => {
+                    img.classList.add('loaded');
+                    const thumb = img.closest('.thumb');
+                    if (thumb) thumb.classList.add('loaded');
+                };
+                const markIfComplete = (img) => {
+                    if (img.complete) {
+                        markLoaded(img);
+                    }
+                };
+                imgs.forEach((img) => {
+                    const onDone = () => markLoaded(img);
+                    img.addEventListener('load', onDone, { once: true });
+                    img.addEventListener('error', onDone, { once: true });
+                    markIfComplete(img);
+                });
+                window.addEventListener(
+                    'load',
+                    () => {
+                        imgs.forEach(markIfComplete);
+                    },
+                    { once: true }
+                );
+                setTimeout(() => {
+                    imgs.forEach(markIfComplete);
+                }, 1500);
+            })();
+        </script>
     </body>
 </html>

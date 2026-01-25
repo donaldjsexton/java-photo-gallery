@@ -2,39 +2,39 @@ package com.example.photogallery.config;
 
 import java.net.URI;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Configuration
 @ConditionalOnProperty(
     name = {
-        "B2_ACCESS_KEY_ID",
-        "B2_SECRET_ACCESS_KEY",
-        "B2_REGION",
-        "B2_S3_ENDPOINT"
+        "R2_ACCESS_KEY_ID",
+        "R2_SECRET_ACCESS_KEY",
+        "R2_REGION",
+        "R2_S3_ENDPOINT"
     }
 )
-public class B2S3PresignerConfig {
+public class R2S3ClientConfig {
 
     @Bean
-    public S3Presigner s3Presigner(
-        @Value("${B2_ACCESS_KEY_ID}") String accessKeyId,
-        @Value("${B2_SECRET_ACCESS_KEY}") String secretAccessKey,
-        @Value("${B2_REGION}") String region,
-        @Value("${B2_S3_ENDPOINT}") String endpoint
+    public S3Client s3Client(
+        @Value("${R2_ACCESS_KEY_ID}") String accessKeyId,
+        @Value("${R2_SECRET_ACCESS_KEY}") String secretAccessKey,
+        @Value("${R2_REGION}") String region,
+        @Value("${R2_S3_ENDPOINT}") String endpoint
     ) {
         AwsBasicCredentials credentials = AwsBasicCredentials.create(
             accessKeyId,
             secretAccessKey
         );
 
-        return S3Presigner
+        return S3Client
             .builder()
             .credentialsProvider(StaticCredentialsProvider.create(credentials))
             .region(Region.of(region))

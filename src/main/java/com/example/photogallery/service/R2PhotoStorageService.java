@@ -21,23 +21,23 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 @Service
 @ConditionalOnProperty(
     name = {
-        "B2_ACCESS_KEY_ID",
-        "B2_SECRET_ACCESS_KEY",
-        "B2_BUCKET_NAME",
-        "B2_REGION",
-        "B2_S3_ENDPOINT"
+        "R2_ACCESS_KEY_ID",
+        "R2_SECRET_ACCESS_KEY",
+        "R2_BUCKET_NAME",
+        "R2_REGION",
+        "R2_S3_ENDPOINT"
     }
 )
-public class B2PhotoStorageService implements PhotoStorageService {
+public class R2PhotoStorageService implements PhotoStorageService {
 
     private final S3Client s3Client;
     private final String bucketName;
 
     private static final String TENANT_SLUG_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
 
-    public B2PhotoStorageService(
+    public R2PhotoStorageService(
         S3Client s3Client,
-        @Value("${B2_BUCKET_NAME}") String bucketName
+        @Value("${R2_BUCKET_NAME}") String bucketName
     ) {
         this.s3Client = s3Client;
         this.bucketName = bucketName;
@@ -65,7 +65,7 @@ public class B2PhotoStorageService implements PhotoStorageService {
         try {
             s3Client.putObject(request.build(), RequestBody.fromBytes(bytes));
         } catch (S3Exception e) {
-            throw new IOException("Failed to store file in B2", e);
+            throw new IOException("Failed to store file in R2", e);
         }
         return storedFileName;
     }
@@ -133,7 +133,7 @@ public class B2PhotoStorageService implements PhotoStorageService {
 
     @Override
     public void deleteEmptyTenantDirectory(String tenantSlug) {
-        // B2 object storage is flat; no-op.
+        // R2 object storage is flat; no-op.
     }
 
     private void validateStoredKey(String storedFileName) throws IOException {

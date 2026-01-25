@@ -688,17 +688,32 @@
         <script>
             (function () {
                 const imgs = document.querySelectorAll('.thumb img');
-                imgs.forEach((img) => {
-                    const markLoaded = () => {
-                        img.classList.add('loaded');
-                        const thumb = img.closest('.thumb');
-                        if (thumb) thumb.classList.add('loaded');
-                    };
-                    img.addEventListener('load', markLoaded, { once: true });
-                    if (img.complete && img.naturalWidth > 0) {
-                        markLoaded();
+                const markLoaded = (img) => {
+                    img.classList.add('loaded');
+                    const thumb = img.closest('.thumb');
+                    if (thumb) thumb.classList.add('loaded');
+                };
+                const markIfComplete = (img) => {
+                    if (img.complete) {
+                        markLoaded(img);
                     }
+                };
+                imgs.forEach((img) => {
+                    const onDone = () => markLoaded(img);
+                    img.addEventListener('load', onDone, { once: true });
+                    img.addEventListener('error', onDone, { once: true });
+                    markIfComplete(img);
                 });
+                window.addEventListener(
+                    'load',
+                    () => {
+                        imgs.forEach(markIfComplete);
+                    },
+                    { once: true }
+                );
+                setTimeout(() => {
+                    imgs.forEach(markIfComplete);
+                }, 1500);
             })();
         </script>
 
