@@ -35,6 +35,15 @@ the Laravel repo's `docs/architecture/unification-plan.md`.
 
 ## Status
 
-No further feature work should land here. Keep this instance runnable as a
-reference until the Laravel Galleries domain reaches feature parity, then
-archive.
+**Parity reached — this repo is now archived as the spec-of-record.**
+
+The Laravel Galleries domain has been implemented through all planned phases
+(data model, ingestion with hash dedup/EXIF/variants, token-gated delivery,
+admin CMS, CRM + client-portal integration with an opt-in payment gate, and
+native galleries embedded in editorial content). It covers every behaviour
+this engine guaranteed.
+
+No data was migrated: production galleries lived in Pic-Time, so the
+consolidation was a greenfield capability port (owner decision). This codebase
+is retained read-only as the functional reference; **no further feature work
+should land here.**
