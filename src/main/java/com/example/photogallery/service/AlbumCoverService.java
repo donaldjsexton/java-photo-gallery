@@ -1,9 +1,13 @@
 package com.example.photogallery.service;
 
 import com.example.photogallery.model.Album;
+import com.example.photogallery.model.Gallery;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -41,10 +45,29 @@ public class AlbumCoverService {
             return result;
         }
 
-        for (Album album : albums) {
-            Long photoId = deriveCoverPhotoId(album);
+        List<Long> albumIds = albums
+            .stream()
+            .map(Album::getId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+
+        // One query for the first root gallery of every album...
+        Map<Long, Gallery> firstGalleryByAlbum =
+            galleryService.getFirstRootGalleryByAlbumId(albumIds);
+        if (firstGalleryByAlbum.isEmpty()) {
+            return result;
+        }
+
+        // ...and one query for those galleries' thumbnail photos.
+        Map<Long, Long> thumbnailByGallery =
+            galleryPhotoService.getThumbnailPhotoIdsForGalleries(
+                new ArrayList<>(firstGalleryByAlbum.values())
+            );
+
+        for (Map.Entry<Long, Gallery> entry : firstGalleryByAlbum.entrySet()) {
+            Long photoId = thumbnailByGallery.get(entry.getValue().getId());
             if (photoId != null) {
-                result.put(album.getId(), photoId);
+                result.put(entry.getKey(), photoId);
             }
         }
         return result;

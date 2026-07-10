@@ -8,8 +8,11 @@ import com.example.photogallery.repository.GalleryPhotoRepository;
 import com.example.photogallery.repository.GalleryRepository;
 import com.example.photogallery.repository.PhotoRepository;
 import jakarta.transaction.Transactional;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +54,55 @@ public class GalleryPhotoService {
             )
             .map(GalleryPhoto::getPhoto)
             .orElse(null);
+    }
+
+    /**
+     * Batched equivalent of {@link #getThumbnailPhotoForGallery(Long)} for a set
+     * of galleries. Resolves each gallery's thumbnail photo id (explicit cover
+     * photo when set, otherwise the first photo) using at most one extra query
+     * instead of one-or-more queries per gallery, avoiding the N+1 pattern when
+     * rendering album pages that list many galleries.
+     */
+    public Map<Long, Long> getThumbnailPhotoIdsForGalleries(
+        List<Gallery> galleries
+    ) {
+        Map<Long, Long> result = new HashMap<>();
+        if (galleries == null || galleries.isEmpty()) {
+            return result;
+        }
+
+        Tenant tenant = tenantService.getCurrentTenant();
+        List<Long> galleriesNeedingFirstPhoto = new ArrayList<>();
+
+        for (Gallery gallery : galleries) {
+            if (gallery == null || gallery.getId() == null) {
+                continue;
+            }
+            // An explicit cover photo wins; reading the id off the (possibly
+            // lazy) association uses the known FK and issues no extra query.
+            Photo cover = gallery.getCoverPhoto();
+            if (cover != null) {
+                result.put(gallery.getId(), cover.getId());
+            } else {
+                galleriesNeedingFirstPhoto.add(gallery.getId());
+            }
+        }
+
+        if (!galleriesNeedingFirstPhoto.isEmpty()) {
+            for (GalleryPhoto gp : galleryPhotoRepository
+                .findByGalleryIdInAndTenantWithPhotoOrdered(
+                    galleriesNeedingFirstPhoto,
+                    tenant
+                )) {
+                // Rows are ordered so the first one per gallery is its thumbnail.
+                result.putIfAbsent(
+                    gp.getGallery().getId(),
+                    gp.getPhoto().getId()
+                );
+            }
+        }
+
+        return result;
     }
 
     // ---- Add photo to gallery ----

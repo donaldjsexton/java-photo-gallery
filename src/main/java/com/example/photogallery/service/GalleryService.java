@@ -9,7 +9,9 @@ import com.example.photogallery.repository.GalleryRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import java.util.Locale;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -201,7 +203,30 @@ public class GalleryService {
     public List<Gallery> getChildren(Long id) {
         return galleryRepository.findByTenantAndParentId(resolveTenant(), id);
     }
-    
+
+    /**
+     * Batched lookup of the first (newest) root gallery for each of the given
+     * albums, resolved in a single query. Replaces calling
+     * {@link #getRootGalleriesForAlbum(Album)} once per album when deriving album
+     * cover thumbnails. Iteration order follows the input album ids.
+     */
+    public Map<Long, Gallery> getFirstRootGalleryByAlbumId(List<Long> albumIds) {
+        Map<Long, Gallery> result = new LinkedHashMap<>();
+        if (albumIds == null || albumIds.isEmpty()) {
+            return result;
+        }
+        Tenant tenant = resolveTenant();
+        for (Gallery g : galleryRepository
+            .findByTenantAndAlbumIdInAndParentIsNullOrderByCreatedAtDesc(
+                tenant,
+                albumIds
+            )) {
+            // Ordered createdAt DESC per album, so the first seen is the newest.
+            result.putIfAbsent(g.getAlbum().getId(), g);
+        }
+        return result;
+    }
+
 
     // ---- Update ----
 

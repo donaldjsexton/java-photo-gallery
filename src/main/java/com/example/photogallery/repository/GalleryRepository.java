@@ -23,6 +23,29 @@ public interface GalleryRepository extends JpaRepository<Gallery, Long> {
         Album album
     );
 
+    /**
+     * Batched replacement for calling
+     * {@link #findByTenantAndAlbumAndParentIsNullOrderByCreatedAtDesc} once per
+     * album. Returns the root galleries for every given album in a single query,
+     * ordered newest-first so the first gallery seen per album id matches the
+     * single-album lookup. The album is join-fetched so callers can group by
+     * album id without triggering a lazy load per row.
+     */
+    @Query(
+        """
+        SELECT g FROM Gallery g
+        JOIN FETCH g.album a
+        WHERE g.tenant = :tenant
+          AND a.id IN :albumIds
+          AND g.parent IS NULL
+        ORDER BY a.id ASC, g.createdAt DESC
+        """
+    )
+    List<Gallery> findByTenantAndAlbumIdInAndParentIsNullOrderByCreatedAtDesc(
+        @Param("tenant") Tenant tenant,
+        @Param("albumIds") List<Long> albumIds
+    );
+
     Optional<Gallery> findByTenantAndAlbumAndPublicId(
         Tenant tenant,
         Album album,

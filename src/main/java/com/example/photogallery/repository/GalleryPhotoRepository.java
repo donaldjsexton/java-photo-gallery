@@ -46,6 +46,32 @@ public interface GalleryPhotoRepository
         Tenant tenant
     );
 
+    /**
+     * Batched replacement for calling
+     * {@link #findFirstByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc}
+     * once per gallery. Returns every gallery photo (with its photo joined) for
+     * the given galleries in a single query, ordered so the first row seen for
+     * each gallery id is that gallery's thumbnail. Callers group by
+     * {@code gp.getGallery().getId()} and keep the first entry per gallery.
+     */
+    @Query(
+        """
+        SELECT gp FROM GalleryPhoto gp
+        JOIN FETCH gp.photo
+        WHERE gp.gallery.id IN :galleryIds
+          AND gp.tenant = :tenant
+        ORDER BY
+            gp.gallery.id ASC,
+            CASE WHEN gp.sortOrder IS NULL THEN 1 ELSE 0 END,
+            gp.sortOrder ASC,
+            gp.addedAt ASC
+        """
+    )
+    List<GalleryPhoto> findByGalleryIdInAndTenantWithPhotoOrdered(
+        @Param("galleryIds") List<Long> galleryIds,
+        @Param("tenant") Tenant tenant
+    );
+
     Optional<GalleryPhoto> findByGalleryAndPhoto(Gallery gallery, Photo photo);
 
     boolean existsByGalleryIdAndPhotoIdAndTenant(

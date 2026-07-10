@@ -61,22 +61,17 @@ public class AlbumController {
         }
         List<Gallery> galleries = galleryService.getRootGalleriesForAlbum(album);
 
-        Map<Long, Long> galleryThumbnails = new HashMap<>();
-        for (Gallery g : galleries) {
-            try {
-                var photo = galleryPhotoService.getThumbnailPhotoForGallery(
-                    g.getId()
-                );
-                if (photo != null) {
-                    galleryThumbnails.put(g.getId(), photo.getId());
-                }
-            } catch (RuntimeException ex) {
-                log.error(
-                    "Failed to resolve thumbnail for galleryId={}",
-                    g.getId(),
-                    ex
-                );
-            }
+        Map<Long, Long> galleryThumbnails;
+        try {
+            galleryThumbnails =
+                galleryPhotoService.getThumbnailPhotoIdsForGalleries(galleries);
+        } catch (RuntimeException ex) {
+            log.error(
+                "Failed to resolve gallery thumbnails for albumId={}",
+                albumId,
+                ex
+            );
+            galleryThumbnails = new HashMap<>();
         }
 
         model.addAttribute("categories", categoryService.listForCurrentTenant());
