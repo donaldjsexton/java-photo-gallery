@@ -72,14 +72,18 @@ public class ShareController {
             );
 
         Map<Long, Long> galleryThumbnails = new HashMap<>();
-        for (Gallery g : galleries) {
+        List<Long> galleryIds = galleries.stream().map(Gallery::getId).toList();
+        if (!galleryIds.isEmpty()) {
+            // One batched query instead of one lookup per gallery. Rows are
+            // ordered so the first seen per gallery id is its thumbnail.
             galleryPhotoRepository
-                .findFirstByGalleryIdAndTenantOrderBySortOrderAscAddedAtAsc(
-                    g.getId(),
-                    tenant
-                )
-                .map(gp -> gp.getPhoto().getId())
-                .ifPresent(photoId -> galleryThumbnails.put(g.getId(), photoId));
+                .findByGalleryIdInAndTenantWithPhotoOrdered(galleryIds, tenant)
+                .forEach(gp ->
+                    galleryThumbnails.putIfAbsent(
+                        gp.getGallery().getId(),
+                        gp.getPhoto().getId()
+                    )
+                );
         }
 
         model.addAttribute("shareTokenId", token.getId());
