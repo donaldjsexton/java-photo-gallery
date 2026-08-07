@@ -204,11 +204,14 @@ public class GalleryPhotoService {
                 gallery
             );
 
-        // Simple O(n^2) is fine for small galleries
+        Map<Long, Integer> desiredIndexByPhotoId = new HashMap<>();
+        for (int i = 0; i < orderedPhotoIds.size(); i++) {
+            desiredIndexByPhotoId.putIfAbsent(orderedPhotoIds.get(i), i);
+        }
+
         for (GalleryPhoto gp : mappings) {
-            Long pid = gp.getPhoto().getId();
-            int index = orderedPhotoIds.indexOf(pid);
-            if (index != -1) {
+            Integer index = desiredIndexByPhotoId.get(gp.getPhoto().getId());
+            if (index != null) {
                 gp.setSortOrder(index);
             }
         }
